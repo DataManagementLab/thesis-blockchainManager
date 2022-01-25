@@ -5,16 +5,12 @@ import (
 	"BlockchainEnabler/BlockchainEnabler/internal/blockchain/fabric"
 	"BlockchainEnabler/BlockchainEnabler/internal/conf"
 	"BlockchainEnabler/BlockchainEnabler/internal/constants"
-	"BlockchainEnabler/BlockchainEnabler/internal/docker"
 	"BlockchainEnabler/BlockchainEnabler/internal/types"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/rs/zerolog"
-	"gopkg.in/yaml.v2"
 )
 
 type EnablerPlatformManager struct {
@@ -67,41 +63,16 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	// if the user chooses the docker deployment -> then the function needs to call the provider and then run the functions specific to the docker.
 	// Otherwise it should call the functions specific to the k8s.
 	//
-
-	e.InterfaceProvider.Init()
-	compose := docker.CreateDockerCompose()
-
-	// Now need to call the service definition genrator.
-
-	serviceDefinition := e.InterfaceProvider.GetDockerServiceDefinitions()
-	for _, services := range serviceDefinition {
-		compose.Services[services.ServiceName] = services.Service
-		for _, volumeName := range services.VolumeNames {
-			compose.Volumes[volumeName] = struct{}{}
-		}
-	}
 	if err := em.ensureDirectories(e); err != nil {
 		return err
 	}
-	if err := em.writeDockerCompose(compose, e); err != nil {
-		return err
-	}
-	if err := em.writeConfigs(e); err != nil {
-		return err
-	}
+	e.InterfaceProvider.Init(em.UserId)
+
+	// if err := em.writeConfigs(e); err != nil {
+	// 	return err
+	// }
 
 	return nil
-}
-
-func (s *EnablerPlatformManager) writeDockerCompose(compose *docker.DockerComposeConfig, enabler *types.EnablerPlatform) error {
-	bytes, err := yaml.Marshal(compose)
-	if err != nil {
-		return err
-	}
-
-	enablerDir := filepath.Join(constants.EnablerDir, s.UserId, enabler.EnablerName)
-
-	return ioutil.WriteFile(filepath.Join(enablerDir, "docker-compose.yml"), bytes, 0755)
 }
 
 func (em *EnablerPlatformManager) ensureDirectories(s *types.EnablerPlatform) error {
@@ -121,20 +92,20 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.EnablerPlatform) er
 	return nil
 }
 
-func (em *EnablerPlatformManager) writeConfigs(e *types.EnablerPlatform) (err error) {
-	stackConfigBytes, _ := json.MarshalIndent(e, "", " ")
-	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, e.EnablerName)
+// func (em *EnablerPlatformManager) writeConfigs(e *types.EnablerPlatform) (err error) {
+// 	stackConfigBytes, _ := json.MarshalIndent(e, "", " ")
+// 	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, e.EnablerName)
 
-	if err := ioutil.WriteFile(filepath.Join(enablerDir, "stack.json"), stackConfigBytes, 0755); err != nil {
-		return err
-	}
+// 	if err := ioutil.WriteFile(filepath.Join(enablerDir, "stack.json"), stackConfigBytes, 0755); err != nil {
+// 		return err
+// 	}
 
-	if err := e.InterfaceProvider.WriteConfigs(); err != nil {
-		return err
-	}
+// 	if err := e.InterfaceProvider.WriteConfigs(); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func createMember(id string, index int, options *conf.InitializationOptions) *types.Member {
 	serviceBase := options.ServicesPort + (index * 100)

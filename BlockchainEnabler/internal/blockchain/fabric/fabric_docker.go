@@ -2,8 +2,14 @@ package fabric
 
 import (
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 
-	"BlockchainEnabler/BlockchainEnabler/internal/docker"
+	"BlockchainEnabler/BlockchainEnabler/internal/constants"
+	"BlockchainEnabler/BlockchainEnabler/internal/deployer/docker"
+	"BlockchainEnabler/BlockchainEnabler/internal/types"
+
+	"gopkg.in/yaml.v2"
 )
 
 type FabricDocker struct{}
@@ -128,19 +134,33 @@ func (fabDocker *FabricDocker) Deploy() {
 
 }
 
-func (fabDocker *FabricDocker) GenerateFiles() {
-	// compose := docker.CreateDockerCompose()
-
+func (fabDocker *FabricDocker) GenerateFiles(enabler *types.EnablerPlatform,userId string) (err error){
+	compose := docker.CreateDockerCompose()
+	serviceDefinition := GenerateServiceDefinitions(enabler.EnablerName)
+	for _, services := range serviceDefinition {
+		compose.Services[services.ServiceName] = services.Service
+		for _, volumeName := range services.VolumeNames {
+			compose.Volumes[volumeName] = struct{}{}
+		}
+	}
+	if err := writeDockerCompose(compose, enabler,userId); err != nil {
+		return err
+	}
 	// now need to check for the docker service definition and how to create it .
 	// return GenerateServiceDefinitions(enablerName)
+	return nil
 }
 
-func (fabDocker *FabricDocker) GetServiceDefinition(enabler string) []*docker.ServiceDefinition {
-	return GenerateServiceDefinitions(enabler)
-	// GenerateServiceDefinitions()
+func writeDockerCompose(compose *docker.DockerComposeConfig, enabler *types.EnablerPlatform,userId string) error {
+	bytes, err := yaml.Marshal(compose)
+	if err != nil {
+		return err
+	}
 
+	enablerDir := filepath.Join(constants.EnablerDir, userId, enabler.EnablerName)
+
+	return ioutil.WriteFile(filepath.Join(enablerDir, "docker-compose.yml"), bytes, 0755)
 }
-
 func GetFabricDockerInstance() *FabricDocker {
 	return &FabricDocker{}
 }

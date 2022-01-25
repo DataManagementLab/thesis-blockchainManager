@@ -1,9 +1,10 @@
 package fabric
 
 import (
-	"BlockchainEnabler/BlockchainEnabler/internal/blockchain"
-	"BlockchainEnabler/BlockchainEnabler/internal/docker"
+	"BlockchainEnabler/BlockchainEnabler/internal/deployer/docker"
 	"BlockchainEnabler/BlockchainEnabler/internal/types"
+
+	"BlockchainEnabler/BlockchainEnabler/internal/deployer"
 
 	// "BlockchainEnabler/BlockchainEnabler/internal/enablerplatform"
 
@@ -14,12 +15,12 @@ type FabricDefinition struct {
 	Logger       *zerolog.Logger
 	Enabler      *types.EnablerPlatform
 	DeployerType string
-	Deployer     blockchain.IDeployer
+	Deployer     deployer.IDeployer
 }
 
 var fab *FabricDefinition
 
-func (f *FabricDefinition) Init() {
+func (f *FabricDefinition) Init(userId string) {
 
 	//Steps to follow:
 	// Basic step to fetch the deployer instance.
@@ -36,7 +37,7 @@ func (f *FabricDefinition) Init() {
 	// once this is done then need to call the deployer init.
 	// call the deployer file generation.
 
-	f.Deployer.GenerateFiles()
+	f.Deployer.GenerateFiles(f.Enabler,userId)
 
 	// Need to call the deployer-> which can be anything from kubernetes to docker -> depending on the user choice.
 	// by default it is docker
@@ -73,7 +74,7 @@ func (f *FabricDefinition) WriteConfigs() (err error) {
 	return nil
 }
 
-func getDeployerInstance(deployerType string) (deployer blockchain.IDeployer) {
+func getDeployerInstance(deployerType string) (deployer deployer.IDeployer) {
 	if deployerType == "docker" {
 		return GetFabricDockerInstance()
 	}
