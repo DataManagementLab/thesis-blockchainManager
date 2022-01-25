@@ -10,8 +10,7 @@ type EnablerPlatform struct {
 	Members               []*Member `json:"members,omitempty"`
 	ExposedBlockchainPort int       `json:"exposedPort,omitempty"`
 	BlockchainProvider    string    `json:"blockchainProvider"`
-
-	InterfaceProvider blockchain.IProvider
+	InterfaceProvider     blockchain.IProvider
 	// InterfaceDeployer blockchain.IDeployer
 }
 

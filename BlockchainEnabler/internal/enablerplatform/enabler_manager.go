@@ -7,6 +7,7 @@ import (
 	"BlockchainEnabler/BlockchainEnabler/internal/constants"
 	"BlockchainEnabler/BlockchainEnabler/internal/docker"
 	"BlockchainEnabler/BlockchainEnabler/internal/types"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -60,7 +61,14 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	e.InterfaceProvider = em.getBlockchainProvider(e)
 
 	// now we need to provide the values that are needed to create our docker compose
+	//
+	// Here we can actually check which deployer is used and then call the functions related to that deployer.
+	// There are currently two deployers to choose from 1. docker 2. K8
+	// if the user chooses the docker deployment -> then the function needs to call the provider and then run the functions specific to the docker.
+	// Otherwise it should call the functions specific to the k8s.
+	//
 
+	e.InterfaceProvider.Init()
 	compose := docker.CreateDockerCompose()
 
 	// Now need to call the service definition genrator.
@@ -76,6 +84,9 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 		return err
 	}
 	if err := em.writeDockerCompose(compose, e); err != nil {
+		return err
+	}
+	if err := em.writeConfigs(e); err != nil {
 		return err
 	}
 
@@ -107,6 +118,21 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.EnablerPlatform) er
 			return err
 		}
 	}
+	return nil
+}
+
+func (em *EnablerPlatformManager) writeConfigs(e *types.EnablerPlatform) (err error) {
+	stackConfigBytes, _ := json.MarshalIndent(e, "", " ")
+	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, e.EnablerName)
+
+	if err := ioutil.WriteFile(filepath.Join(enablerDir, "stack.json"), stackConfigBytes, 0755); err != nil {
+		return err
+	}
+
+	if err := e.InterfaceProvider.WriteConfigs(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

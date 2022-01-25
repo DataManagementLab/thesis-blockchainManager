@@ -1,6 +1,8 @@
 package blockchain
 
-import "BlockchainEnabler/BlockchainEnabler/internal/docker"
+import (
+	"BlockchainEnabler/BlockchainEnabler/internal/docker"
+)
 
 // "BlockchainEnabler/BlockchainEnabler/internal/docker"
 
@@ -10,6 +12,7 @@ import "BlockchainEnabler/BlockchainEnabler/internal/docker"
 // }
 
 type IDeployer interface {
+	GenerateFiles()
 	// Monitor()x
 	// GetServiceDefinition(interface{}) []*docker.ServiceDefinition
 	// GenerateFiles(name string) interface{}
@@ -22,7 +25,7 @@ type IDeployer interface {
 
 type IProvider interface {
 	Init()
-	WriteConfigs()
+	WriteConfigs() error
 	GetDockerServiceDefinitions() []*docker.ServiceDefinition
 
 	// Create()

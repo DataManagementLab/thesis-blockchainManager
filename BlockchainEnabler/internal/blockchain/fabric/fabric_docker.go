@@ -128,8 +128,11 @@ func (fabDocker *FabricDocker) Deploy() {
 
 }
 
-func (fabDocker *FabricDocker) GenerateFiles(enablerName string) interface{} {
-	return GenerateServiceDefinitions(enablerName)
+func (fabDocker *FabricDocker) GenerateFiles() {
+	// compose := docker.CreateDockerCompose()
+
+	// now need to check for the docker service definition and how to create it .
+	// return GenerateServiceDefinitions(enablerName)
 }
 
 func (fabDocker *FabricDocker) GetServiceDefinition(enabler string) []*docker.ServiceDefinition {
