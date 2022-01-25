@@ -1,8 +1,12 @@
 package fabric
 
 import (
+	"BlockchainEnabler/BlockchainEnabler/internal/constants"
 	"BlockchainEnabler/BlockchainEnabler/internal/deployer/docker"
 	"BlockchainEnabler/BlockchainEnabler/internal/types"
+	_ "embed"
+	"io/ioutil"
+	"path"
 
 	"BlockchainEnabler/BlockchainEnabler/internal/deployer"
 
@@ -19,6 +23,9 @@ type FabricDefinition struct {
 }
 
 var fab *FabricDefinition
+
+//go:embed configtx.yaml
+var configtxYaml string
 
 func (f *FabricDefinition) Init(userId string) {
 
@@ -37,8 +44,8 @@ func (f *FabricDefinition) Init(userId string) {
 	// once this is done then need to call the deployer init.
 	// call the deployer file generation.
 
-	f.Deployer.GenerateFiles(f.Enabler,userId)
-
+	f.Deployer.GenerateFiles(f.Enabler, userId)
+	f.writeConfigs(userId)
 	// Need to call the deployer-> which can be anything from kubernetes to docker -> depending on the user choice.
 	// by default it is docker
 	// getDeployerInstance("docker")
@@ -54,10 +61,30 @@ func GetFabricInstance(logger *zerolog.Logger, enabler *types.EnablerPlatform, d
 		// Deployer:     getDeployerInstance(deployerType),
 	}
 }
-func (f *FabricDefinition) WriteConfigs() (err error) {
+
+func writeConfigtxYaml(blockchainPath string) error {
+
+	filePath := path.Join(blockchainPath, "configtx.yaml")
+	return ioutil.WriteFile(filePath, []byte(configtxYaml), 0755)
+}
+
+func (f *FabricDefinition) writeConfigs(userId string) (err error) {
 
 	// Steps to be handled here
 	// 1. Create cryptogen config file
+	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.EnablerName, "blockchain")
+	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
+
+	if err := WriteCryptogenConfig(1, cryptogenYamlPath); err != nil {
+		return err
+	}
+
+	if err := WriteNetworkConfig(path.Join(blockchainDirectory, "ccp.yaml")); err != nil {
+		return err
+	}
+	if err := writeConfigtxYaml(blockchainDirectory); err != nil {
+		return err
+	}
 
 	// 2.  Create the Network config file alias ccp.yaml file
 
@@ -68,6 +95,7 @@ func (f *FabricDefinition) WriteConfigs() (err error) {
 	// Also specify why each of these files are create here.
 	// For example when creating the members with different nodes can actually decide
 	//  on how many orderers are needed in the file as well as the number of peers and organizations.
+	// Note: This part can be skipped now as we have currently decided on using only 1 peer, 1 org, 1orderer,1 ca when starting the org
 
 	// Here we need to create the cryptogen config file
 
