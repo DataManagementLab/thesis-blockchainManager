@@ -27,7 +27,7 @@ var fab *FabricDefinition
 //go:embed configtx.yaml
 var configtxYaml string
 
-func (f *FabricDefinition) Init(userId string) {
+func (f *FabricDefinition) Init(userId string) (err error) {
 
 	//Steps to follow:
 	// Basic step to fetch the deployer instance.
@@ -44,13 +44,18 @@ func (f *FabricDefinition) Init(userId string) {
 	// once this is done then need to call the deployer init.
 	// call the deployer file generation.
 
-	f.Deployer.GenerateFiles(f.Enabler, userId)
-	f.writeConfigs(userId)
+	if err := f.Deployer.GenerateFiles(f.Enabler, userId); err != nil {
+		return err
+	}
+	if err := f.writeConfigs(userId); err != nil {
+		return err
+	}
 	// Need to call the deployer-> which can be anything from kubernetes to docker -> depending on the user choice.
 	// by default it is docker
 	// getDeployerInstance("docker")
 	// running the docker init
 	// getDeployerInstance(f.DeployerType).GenerateFiles(f.Enabler.EnablerName)
+	return nil
 }
 
 func GetFabricInstance(logger *zerolog.Logger, enabler *types.EnablerPlatform, deployerType string) *FabricDefinition {

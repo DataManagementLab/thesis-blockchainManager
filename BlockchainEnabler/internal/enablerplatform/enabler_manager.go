@@ -66,7 +66,9 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	if err := em.ensureDirectories(e); err != nil {
 		return err
 	}
-	e.InterfaceProvider.Init(em.UserId)
+	if err := e.InterfaceProvider.Init(em.UserId); err != nil {
+		return err
+	}
 
 	// if err := em.writeConfigs(e); err != nil {
 	// 	return err
