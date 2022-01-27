@@ -5,6 +5,7 @@ import (
 	"BlockchainEnabler/BlockchainEnabler/internal/deployer/docker"
 	"BlockchainEnabler/BlockchainEnabler/internal/types"
 	_ "embed"
+	"fmt"
 	"io/ioutil"
 	"path"
 
@@ -26,6 +27,7 @@ var fab *FabricDefinition
 
 //go:embed configtx.yaml
 var configtxYaml string
+var userIdentification string
 
 func (f *FabricDefinition) Init(userId string) (err error) {
 
@@ -41,6 +43,7 @@ func (f *FabricDefinition) Init(userId string) (err error) {
 
 	// check if the fabric deployertype is docker then initialze deployer with it.
 	f.Deployer = getDeployerInstance(f.DeployerType)
+	userIdentification = userId
 	// once this is done then need to call the deployer init.
 	// call the deployer file generation.
 
@@ -79,6 +82,11 @@ func (f *FabricDefinition) writeConfigs(userId string) (err error) {
 	// 1. Create cryptogen config file
 	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.EnablerName, "blockchain")
 	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
+	// Need to also check if the ports are available or not. If the ports are not available then just use a different port
+
+	// Call to method check ports and then assigning the ports for the docker compose and others.
+
+	// also need to add certain ports and check for certain ports from the member.
 
 	if err := WriteCryptogenConfig(1, cryptogenYamlPath); err != nil {
 		return err
@@ -114,6 +122,42 @@ func getDeployerInstance(deployerType string) (deployer deployer.IDeployer) {
 	return GetFabricDockerInstance()
 }
 
+func (f *FabricDefinition) Create() (err error) {
+	f.generateGenesisBlock(userIdentification)
+	// Step to do inside the create function
+
+	// 1.Also need to check if the docker is present in the host machine.
+	// 2. We would need to run the first time setup where the initiailization of blockcahin node happens.
+
+	// Currently i am planning to use the functions the docker code from the firefly cli seems quite nice way of handling things.
+	return nil
+}
+
+// setting up the docker container and the volume and running the cryptogen configs
+
+func (f *FabricDefinition) generateGenesisBlock(userId string) (err error) {
+	verbose := true
+	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.EnablerName, "blockchain")
+	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
+	volumeName := fmt.Sprintf("%s_enabler_fabric", f.Enabler.EnablerName)
+
+	if err := docker.CreateVolume(volumeName, verbose); err != nil {
+		return err
+	}
+
+	// Run cryptogen to generate MSP
+	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/template.yml", cryptogenYamlPath), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "cryptogen", "generate", "--config", "/etc/template.yml", "--output", "/etc/enabler/organizations"); err != nil {
+		return err
+	}
+
+	// Generate genesis block
+	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(blockchainDirectory, "configtx.yaml")), "hyperledger/fabric-tools:2.3", "configtxgen", "-outputBlock", "/etc/enabler/enabler.block", "-profile", "SingleOrgApplicationGenesis", "-channelID", "enablerchannel"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // We could actually check out with the deployer instance if it is docker then using the getDockerServiceDefinition,
 // other using something similar for the K8s.
 
@@ -126,7 +170,7 @@ func getDeployerInstance(deployerType string) (deployer deployer.IDeployer) {
 // but inside those it will call the specific deployer instance functions.
 func (f *FabricDefinition) GetDockerServiceDefinitions() []*docker.ServiceDefinition {
 	f.Logger.Print("Fabric Service Definition function called.")
-	return GenerateServiceDefinitions(f.Enabler.EnablerName)
+	return GenerateServiceDefinitions(f.Enabler)
 }
 
 // Few things need to be changed

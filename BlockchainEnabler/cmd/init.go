@@ -64,16 +64,17 @@ var initCmd = &cobra.Command{
 			userId, _ = prompt("User ID: ", checkUserId)
 		}
 
-		var numOfMembers string
-		if len(args) > 1 {
-			numOfMembers = args[1]
-			if err := checkMembersCount(numOfMembers); err != nil {
-				return err
-			}
-		} else {
-			numOfMembers, _ = prompt("Number of members: ", checkMembersCount)
-		}
-		memberCount, _ := strconv.Atoi(numOfMembers)
+		// var numOfMembers string
+		// if len(args) > 1 {
+		// 	numOfMembers = args[1]
+		// 	if err := checkMembersCount(numOfMembers); err != nil {
+		// 		return err
+		// 	}
+		// } else {
+		// 	numOfMembers, _ = prompt("Number of members: ", checkMembersCount)
+		// }
+		memberCount := 1
+		// memberCount, _ := strconv.Atoi(numOfMembers)
 		initOptions.UserId = userId
 		initOptions.OrgNames = make([]string, 0, memberCount)
 		initOptions.NodeNames = make([]string, 0, memberCount)

@@ -6,7 +6,9 @@ import (
 	"BlockchainEnabler/BlockchainEnabler/internal/conf"
 	"BlockchainEnabler/BlockchainEnabler/internal/constants"
 	"BlockchainEnabler/BlockchainEnabler/internal/types"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -32,6 +34,7 @@ func GetInstance(logger *zerolog.Logger) *EnablerPlatformManager {
 	return enablerManager
 }
 
+// This function initializes the Enabler Platform.
 func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMembers int, initOptions *conf.InitializationOptions) (err error) {
 
 	em.UserId = userId
@@ -54,8 +57,6 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	//  setting the blockchain Provider..
 	// Need to call a function which takes the e.BlockchainProvider and returns an Interface for the IProvider.-> which would be the fabric struct instance.
 
-	e.InterfaceProvider = em.getBlockchainProvider(e)
-
 	// now we need to provide the values that are needed to create our docker compose
 	//
 	// Here we can actually check which deployer is used and then call the functions related to that deployer.
@@ -63,17 +64,30 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	// if the user chooses the docker deployment -> then the function needs to call the provider and then run the functions specific to the docker.
 	// Otherwise it should call the functions specific to the k8s.
 	//
+	// Creating the directory structure.
 	if err := em.ensureDirectories(e); err != nil {
 		return err
 	}
+	if err := em.writePlatformInfo(e); err != nil {
+		return err
+	}
+	e.InterfaceProvider = em.getBlockchainProvider(e)
+
 	if err := e.InterfaceProvider.Init(em.UserId); err != nil {
 		return err
 	}
 
-	// if err := em.writeConfigs(e); err != nil {
-	// 	return err
-	// }
+	return nil
+}
 
+func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.EnablerPlatform) (err error) {
+	platformConfigBytes, err := json.MarshalIndent(enabler, "", " ")
+	if err != nil {
+		fmt.Println(err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(constants.EnablerDir, em.UserId, "platform_info.json"), platformConfigBytes, 0755); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -93,21 +107,6 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.EnablerPlatform) er
 	}
 	return nil
 }
-
-// func (em *EnablerPlatformManager) writeConfigs(e *types.EnablerPlatform) (err error) {
-// 	stackConfigBytes, _ := json.MarshalIndent(e, "", " ")
-// 	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, e.EnablerName)
-
-// 	if err := ioutil.WriteFile(filepath.Join(enablerDir, "stack.json"), stackConfigBytes, 0755); err != nil {
-// 		return err
-// 	}
-
-// 	if err := e.InterfaceProvider.WriteConfigs(); err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
 
 func createMember(id string, index int, options *conf.InitializationOptions) *types.Member {
 	serviceBase := options.ServicesPort + (index * 100)

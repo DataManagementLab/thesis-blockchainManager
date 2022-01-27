@@ -15,11 +15,12 @@ type EnablerPlatform struct {
 }
 
 type Member struct {
-	ID               string `json:"id,omitempty"`
-	Index            *int   `json:"index,omitempty"`
-	Address          string `json:"address,omitempty"`
-	ExposedPort      int    `json:"exposedPort,omitempty"`
-	ExposedAdminPort int    `json:"exposedAdminPort,omitempty"`
-	OrgName          string `json:"orgName,omitempty"`
-	NodeName         string `json:"nodeName,omitempty"`
+	ID               string      `json:"id,omitempty"`
+	Index            *int        `json:"index,omitempty"`
+	Address          string      `json:"address,omitempty"`
+	ExposedPort      int         `json:"exposedPort"`
+	ExposedAdminPort int         `json:"exposedAdminPort,omitempty"`
+	ExternalPorts    interface{} `json:"externalPorts,omitempty"`
+	OrgName          string      `json:"orgName,omitempty"`
+	NodeName         string      `json:"nodeName,omitempty"`
 }

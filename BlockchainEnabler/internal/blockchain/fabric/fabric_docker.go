@@ -14,14 +14,16 @@ import (
 
 type FabricDocker struct{}
 
-func GenerateServiceDefinitions(enablerName string) []*docker.ServiceDefinition {
+// either need to handle the ports issue here as the enabler_external port takes an interaface, it would also be easy to just assign the ports here.
+
+func GenerateServiceDefinitions(enabler *types.EnablerPlatform) []*docker.ServiceDefinition {
 	serviceDefinitions := []*docker.ServiceDefinition{
 		// Fabric CA
 		{
 			ServiceName: "fabric_ca",
 			Service: &docker.Service{
 				Image:         "hyperledger/fabric-ca:1.5",
-				ContainerName: fmt.Sprintf("%s_fabric_ca", enablerName),
+				ContainerName: fmt.Sprintf("%s_fabric_ca", enabler.EnablerName),
 				Environment: map[string]string{
 					"FABRIC_CA_HOME":                            "/etc/hyperledger/fabric-ca-server",
 					"FABRIC_CA_SERVER_CA_NAME":                  "fabric_ca",
@@ -47,7 +49,7 @@ func GenerateServiceDefinitions(enablerName string) []*docker.ServiceDefinition 
 			ServiceName: "fabric_orderer",
 			Service: &docker.Service{
 				Image:         "hyperledger/fabric-orderer:2.3",
-				ContainerName: fmt.Sprintf("%s_fabric_orderer", enablerName),
+				ContainerName: fmt.Sprintf("%s_fabric_orderer", enabler.EnablerName),
 				Environment: map[string]string{
 					"FABRIC_LOGGING_SPEC":                       "INFO",
 					"ORDERER_GENERAL_LISTENADDRESS":             "0.0.0.0",
@@ -93,10 +95,10 @@ func GenerateServiceDefinitions(enablerName string) []*docker.ServiceDefinition 
 			ServiceName: "fabric_peer",
 			Service: &docker.Service{
 				Image:         "hyperledger/fabric-peer:2.3",
-				ContainerName: fmt.Sprintf("%s_fabric_peer", enablerName),
+				ContainerName: fmt.Sprintf("%s_fabric_peer", enabler.EnablerName),
 				Environment: map[string]string{
 					"CORE_VM_ENDPOINT":                      "unix:///host/var/run/docker.sock",
-					"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE": fmt.Sprintf("%s_default", enablerName),
+					"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE": fmt.Sprintf("%s_default", enabler.EnablerName),
 					"FABRIC_LOGGING_SPEC":                   "INFO",
 					"CORE_PEER_TLS_ENABLED":                 "true",
 					"CORE_PEER_PROFILE_ENABLED":             "false",
@@ -136,7 +138,7 @@ func (fabDocker *FabricDocker) Deploy() {
 
 func (fabDocker *FabricDocker) GenerateFiles(enabler *types.EnablerPlatform,userId string) (err error){
 	compose := docker.CreateDockerCompose()
-	serviceDefinition := GenerateServiceDefinitions(enabler.EnablerName)
+	serviceDefinition := GenerateServiceDefinitions(enabler)
 	for _, services := range serviceDefinition {
 		compose.Services[services.ServiceName] = services.Service
 		for _, volumeName := range services.VolumeNames {
