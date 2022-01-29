@@ -5,12 +5,12 @@ import (
 	// "BlockchainEnabler/BlockchainEnabler/internal/blockchain/fabric"
 )
 
-type EnablerPlatform struct {
-	EnablerName           string    `json:"name,omitempty"`
-	Members               []*Member `json:"members,omitempty"`
-	ExposedBlockchainPort int       `json:"exposedPort,omitempty"`
-	BlockchainProvider    string    `json:"blockchainProvider"`
-	InterfaceProvider     blockchain.IProvider
+type Network struct {
+	NetworkName           string               `json:"name,omitempty"`
+	Members               []*Member            `json:"members,omitempty"`
+	ExposedBlockchainPort int                  `json:"exposedPort,omitempty"`
+	BlockchainProvider    string               `json:"blockchainProvider,omitempty"`
+	InterfaceProvider     blockchain.IProvider `json:"provider,omitempty"`
 	// InterfaceDeployer blockchain.IDeployer
 }
 

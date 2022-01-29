@@ -17,7 +17,7 @@ import (
 
 type EnablerPlatformManager struct {
 	UserId   string
-	Enablers []*types.EnablerPlatform
+	Enablers []*types.Network
 	Options  *conf.InitializationOptions
 	logger   *zerolog.Logger
 }
@@ -38,20 +38,20 @@ func GetInstance(logger *zerolog.Logger) *EnablerPlatformManager {
 func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMembers int, initOptions *conf.InitializationOptions) (err error) {
 
 	em.UserId = userId
-	var e = new(types.EnablerPlatform)
+	var e = new(types.Network)
 	e.BlockchainProvider = initOptions.BlockchainType.String()
 	e.ExposedBlockchainPort = initOptions.ServicesPort
 	e.Members = make([]*types.Member, numberOfMembers)
-	e.EnablerName = fmt.Sprintf("enabler_%s_%d", e.BlockchainProvider, em.GetCurrentCount(e.BlockchainProvider))
-	em.logger.Printf("Initializing the members for the enabler")
+	e.NetworkName = fmt.Sprintf("enabler_network_%s_%d", e.BlockchainProvider, em.GetCurrentCount(e.BlockchainProvider))
+	em.logger.Printf("Initializing the members for the Network")
 	// Create members for each of the enabler ->
 	// This members will be the different components that are needed and connected with the core.
 
 	for i := 0; i < numberOfMembers; i++ {
 		// externalProcess := i < options.ExternalProcesses
-		e.Members[i] = createMember(fmt.Sprint(i), i, initOptions)
+		e.Members[i] = em.createMember(fmt.Sprint(i), i, initOptions)
 	}
-	em.Enablers = append([]*types.EnablerPlatform{}, e)
+	em.Enablers = append([]*types.Network{}, e)
 
 	// Fetching the blockchain Provider
 	//  setting the blockchain Provider..
@@ -72,7 +72,7 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 		return err
 	}
 	e.InterfaceProvider = em.getBlockchainProvider(e)
-
+	//  create a function which checks the ports and pass this function to the init.
 	if err := e.InterfaceProvider.Init(em.UserId); err != nil {
 		return err
 	}
@@ -80,7 +80,11 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
-func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.EnablerPlatform) (err error) {
+func portChecker() {
+
+}
+
+func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.Network) (err error) {
 	platformConfigBytes, err := json.MarshalIndent(enabler, "", " ")
 	if err != nil {
 		fmt.Println(err)
@@ -91,9 +95,9 @@ func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.EnablerPlatfo
 	return nil
 }
 
-func (em *EnablerPlatformManager) ensureDirectories(s *types.EnablerPlatform) error {
+func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	em.logger.Printf("The value for the userid %s", em.UserId)
-	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, s.EnablerName)
+	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, s.NetworkName)
 
 	if err := os.MkdirAll(filepath.Join(enablerDir, "configs"), 0755); err != nil {
 		return err
@@ -108,15 +112,18 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.EnablerPlatform) er
 	return nil
 }
 
-func createMember(id string, index int, options *conf.InitializationOptions) *types.Member {
+func (em *EnablerPlatformManager) createMember(id string, index int, options *conf.InitializationOptions) *types.Member {
+	if options.ServicesPort == 0 {
+		options.ServicesPort = 5000
+	}
 	serviceBase := options.ServicesPort + (index * 100)
 	return &types.Member{
 		ID:               id,
 		Index:            &index,
 		ExposedPort:      options.ServicesPort + index,
 		ExposedAdminPort: serviceBase + 1, // note shared blockchain node is on zero
-		OrgName:          options.OrgNames[index],
-		NodeName:         options.NodeNames[index],
+		OrgName:          fmt.Sprintf("%s_%s", em.UserId, options.OrgNames[index]),
+		NodeName:         fmt.Sprintf("%s_%s", em.UserId, options.NodeNames[index]),
 	}
 
 }
@@ -137,7 +144,7 @@ func (em *EnablerPlatformManager) GetCurrentCount(s string) int {
 	}
 }
 
-func (e *EnablerPlatformManager) getBlockchainProvider(enabler *types.EnablerPlatform) blockchain.IProvider {
+func (e *EnablerPlatformManager) getBlockchainProvider(enabler *types.Network) blockchain.IProvider {
 	switch enabler.BlockchainProvider {
 	case types.HyperledgerFabric.String():
 		return fabric.GetFabricInstance(e.logger, enabler, "docker")

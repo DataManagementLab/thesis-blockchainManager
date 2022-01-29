@@ -16,14 +16,14 @@ type FabricDocker struct{}
 
 // either need to handle the ports issue here as the enabler_external port takes an interaface, it would also be easy to just assign the ports here.
 
-func GenerateServiceDefinitions(enabler *types.EnablerPlatform) []*docker.ServiceDefinition {
+func GenerateServiceDefinitions(enabler *types.Network) []*docker.ServiceDefinition {
 	serviceDefinitions := []*docker.ServiceDefinition{
 		// Fabric CA
 		{
 			ServiceName: "fabric_ca",
 			Service: &docker.Service{
 				Image:         "hyperledger/fabric-ca:1.5",
-				ContainerName: fmt.Sprintf("%s_fabric_ca", enabler.EnablerName),
+				ContainerName: fmt.Sprintf("%s_fabric_ca", enabler.NetworkName),
 				Environment: map[string]string{
 					"FABRIC_CA_HOME":                            "/etc/hyperledger/fabric-ca-server",
 					"FABRIC_CA_SERVER_CA_NAME":                  "fabric_ca",
@@ -49,7 +49,7 @@ func GenerateServiceDefinitions(enabler *types.EnablerPlatform) []*docker.Servic
 			ServiceName: "fabric_orderer",
 			Service: &docker.Service{
 				Image:         "hyperledger/fabric-orderer:2.3",
-				ContainerName: fmt.Sprintf("%s_fabric_orderer", enabler.EnablerName),
+				ContainerName: fmt.Sprintf("%s_fabric_orderer", enabler.NetworkName),
 				Environment: map[string]string{
 					"FABRIC_LOGGING_SPEC":                       "INFO",
 					"ORDERER_GENERAL_LISTENADDRESS":             "0.0.0.0",
@@ -95,10 +95,10 @@ func GenerateServiceDefinitions(enabler *types.EnablerPlatform) []*docker.Servic
 			ServiceName: "fabric_peer",
 			Service: &docker.Service{
 				Image:         "hyperledger/fabric-peer:2.3",
-				ContainerName: fmt.Sprintf("%s_fabric_peer", enabler.EnablerName),
+				ContainerName: fmt.Sprintf("%s_fabric_peer", enabler.NetworkName),
 				Environment: map[string]string{
 					"CORE_VM_ENDPOINT":                      "unix:///host/var/run/docker.sock",
-					"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE": fmt.Sprintf("%s_default", enabler.EnablerName),
+					"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE": fmt.Sprintf("%s_default", enabler.NetworkName),
 					"FABRIC_LOGGING_SPEC":                   "INFO",
 					"CORE_PEER_TLS_ENABLED":                 "true",
 					"CORE_PEER_PROFILE_ENABLED":             "false",
@@ -136,7 +136,7 @@ func (fabDocker *FabricDocker) Deploy() {
 
 }
 
-func (fabDocker *FabricDocker) GenerateFiles(enabler *types.EnablerPlatform,userId string) (err error){
+func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId string) (err error) {
 	compose := docker.CreateDockerCompose()
 	serviceDefinition := GenerateServiceDefinitions(enabler)
 	for _, services := range serviceDefinition {
@@ -145,7 +145,7 @@ func (fabDocker *FabricDocker) GenerateFiles(enabler *types.EnablerPlatform,user
 			compose.Volumes[volumeName] = struct{}{}
 		}
 	}
-	if err := writeDockerCompose(compose, enabler,userId); err != nil {
+	if err := writeDockerCompose(compose, enabler, userId); err != nil {
 		return err
 	}
 	// now need to check for the docker service definition and how to create it .
@@ -153,13 +153,13 @@ func (fabDocker *FabricDocker) GenerateFiles(enabler *types.EnablerPlatform,user
 	return nil
 }
 
-func writeDockerCompose(compose *docker.DockerComposeConfig, enabler *types.EnablerPlatform,userId string) error {
+func writeDockerCompose(compose *docker.DockerComposeConfig, enabler *types.Network, userId string) error {
 	bytes, err := yaml.Marshal(compose)
 	if err != nil {
 		return err
 	}
 
-	enablerDir := filepath.Join(constants.EnablerDir, userId, enabler.EnablerName)
+	enablerDir := filepath.Join(constants.EnablerDir, userId, enabler.NetworkName)
 
 	return ioutil.WriteFile(filepath.Join(enablerDir, "docker-compose.yml"), bytes, 0755)
 }

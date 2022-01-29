@@ -18,7 +18,7 @@ import (
 
 type FabricDefinition struct {
 	Logger       *zerolog.Logger
-	Enabler      *types.EnablerPlatform
+	Enabler      *types.Network
 	DeployerType string
 	Deployer     deployer.IDeployer
 }
@@ -57,11 +57,11 @@ func (f *FabricDefinition) Init(userId string) (err error) {
 	// by default it is docker
 	// getDeployerInstance("docker")
 	// running the docker init
-	// getDeployerInstance(f.DeployerType).GenerateFiles(f.Enabler.EnablerName)
+	// getDeployerInstance(f.DeployerType).GenerateFiles(f.Enabler.NetworkName)
 	return nil
 }
 
-func GetFabricInstance(logger *zerolog.Logger, enabler *types.EnablerPlatform, deployerType string) *FabricDefinition {
+func GetFabricInstance(logger *zerolog.Logger, enabler *types.Network, deployerType string) *FabricDefinition {
 	return &FabricDefinition{
 		Logger:       logger,
 		Enabler:      enabler,
@@ -76,11 +76,13 @@ func writeConfigtxYaml(blockchainPath string) error {
 	return ioutil.WriteFile(filePath, []byte(configtxYaml), 0755)
 }
 
+// The port checker functionality can be implemented in the enabler_manager and then it is passed as a function here too, as the fabric would have an implementation for
+// the ports it wishes to utilize.
 func (f *FabricDefinition) writeConfigs(userId string) (err error) {
 
 	// Steps to be handled here
 	// 1. Create cryptogen config file
-	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.EnablerName, "blockchain")
+	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "blockchain")
 	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
 	// Need to also check if the ports are available or not. If the ports are not available then just use a different port
 
@@ -137,9 +139,9 @@ func (f *FabricDefinition) Create() (err error) {
 
 func (f *FabricDefinition) generateGenesisBlock(userId string) (err error) {
 	verbose := true
-	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.EnablerName, "blockchain")
+	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "blockchain")
 	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
-	volumeName := fmt.Sprintf("%s_enabler_fabric", f.Enabler.EnablerName)
+	volumeName := fmt.Sprintf("%s_enabler_fabric", f.Enabler.NetworkName)
 
 	if err := docker.CreateVolume(volumeName, verbose); err != nil {
 		return err
