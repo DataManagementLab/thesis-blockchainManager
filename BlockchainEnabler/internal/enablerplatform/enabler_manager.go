@@ -68,28 +68,32 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	if err := em.ensureDirectories(e); err != nil {
 		return err
 	}
-	if err := em.writePlatformInfo(e); err != nil {
-		return err
-	}
+
 	e.InterfaceProvider = em.getBlockchainProvider(e)
 	//  create a function which checks the ports and pass this function to the init.
 	if err := e.InterfaceProvider.Init(em.UserId); err != nil {
+		return err
+	}
+	if err := em.writePlatformInfo(e); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func portChecker() {
-
-}
-
 func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.Network) (err error) {
-	platformConfigBytes, err := json.MarshalIndent(enabler, "", " ")
+
+	network := types.Network{
+		NetworkName:           enabler.NetworkName,
+		BlockchainProvider:    enabler.BlockchainProvider,
+		ExposedBlockchainPort: enabler.ExposedBlockchainPort,
+		Members:               enabler.Members,
+	}
+	platformConfigBytes, err := json.MarshalIndent(network, "", " ")
 	if err != nil {
 		fmt.Println(err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(constants.EnablerDir, em.UserId, "platform_info.json"), platformConfigBytes, 0755); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(constants.EnablerDir, em.UserId, enabler.NetworkName, fmt.Sprintf("%s_info.json", enabler.NetworkName)), platformConfigBytes, 0755); err != nil {
 		return err
 	}
 	return nil

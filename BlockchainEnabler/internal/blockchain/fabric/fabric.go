@@ -7,7 +7,9 @@ import (
 	_ "embed"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"path"
+	"time"
 
 	"BlockchainEnabler/BlockchainEnabler/internal/deployer"
 
@@ -46,7 +48,7 @@ func (f *FabricDefinition) Init(userId string) (err error) {
 	userIdentification = userId
 	// once this is done then need to call the deployer init.
 	// call the deployer file generation.
-
+	f.setValidPorts()
 	if err := f.Deployer.GenerateFiles(f.Enabler, userId); err != nil {
 		return err
 	}
@@ -75,6 +77,7 @@ func writeConfigtxYaml(blockchainPath string) error {
 	filePath := path.Join(blockchainPath, "configtx.yaml")
 	return ioutil.WriteFile(filePath, []byte(configtxYaml), 0755)
 }
+
 
 // The port checker functionality can be implemented in the enabler_manager and then it is passed as a function here too, as the fabric would have an implementation for
 // the ports it wishes to utilize.
@@ -115,6 +118,52 @@ func (f *FabricDefinition) writeConfigs(userId string) (err error) {
 	// Here we need to create the cryptogen config file
 
 	return nil
+}
+func (f *FabricDefinition) setValidPorts() {
+	// Assign the member with the external ports that are required for the certificate authority, orderer and peers.
+	host := "127.0.0.1"
+	for _, member := range f.Enabler.Members {
+		if res := checkPortIsOpened(host, member.ExposedPort); res == false {
+			for i := 1; i < 5; i++ {
+				if checkPortIsOpened(host, member.ExposedPort+i*100) {
+					// set the exposed admin port to then other values.
+					member.ExposedAdminPort = member.ExposedPort + i*100 + 1
+					member.ExposedPort = member.ExposedPort + i*100
+					break
+				}
+			}
+
+		}
+		member.ExternalPorts = setExternalPorts(member)
+		for _, port := range member.ExternalPorts.(map[string]int) {
+			if res := checkPortIsOpened(host, port); res == false {
+				for i := 1; i < 5; i++ {
+					if checkPortIsOpened(host, port+i*100) {
+						// set the exposed admin port to then other values.
+						port = port + i*100
+						break
+					}
+				}
+
+			}
+		}
+		// first check the basic ports if they are available or not.
+		// now once we have the member need to check the port available and then set it accordingly
+	}
+}
+func setExternalPorts(mem *types.Member) map[string]int {
+	external := map[string]int{
+		"ca_server_port":                       7054,
+		"ca_operations_listen_port":            17054,
+		"orderer_general_listen_port":          7050,
+		"orderer_admin_listen_port":            7053,
+		"orderer_operations_listen_port":       17050,
+		"core_peer_listen_address_gossip_port": 7051,
+		"core_peer_chaincode_listen_port":      7052,
+		"core_operations_listen_port":          17051,
+	}
+	return external
+
 }
 
 func getDeployerInstance(deployerType string) (deployer deployer.IDeployer) {
@@ -170,9 +219,22 @@ func (f *FabricDefinition) generateGenesisBlock(userId string) (err error) {
 // so once that is done we would be using the fabric - docker instance to call the docker methods.
 // The fabric will implement the methods that it needs as init, create,join and leave
 // but inside those it will call the specific deployer instance functions.
-func (f *FabricDefinition) GetDockerServiceDefinitions() []*docker.ServiceDefinition {
-	f.Logger.Print("Fabric Service Definition function called.")
-	return GenerateServiceDefinitions(f.Enabler)
+// func (f *FabricDefinition) GetDockerServiceDefinitions() []*docker.ServiceDefinition {
+// 	f.Logger.Print("Fabric Service Definition function called.")
+// 	return GenerateServiceDefinitions(f.Enabler)
+// }
+
+func checkPortIsOpened(host string, port int) bool {
+	timeout := time.Millisecond * 500
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, fmt.Sprint(port)), timeout)
+	if err != nil {
+		return false
+	}
+	if conn != nil {
+		conn.Close()
+		return true
+	}
+	return false
 }
 
 // Few things need to be changed
