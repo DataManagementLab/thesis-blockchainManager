@@ -78,7 +78,6 @@ func writeConfigtxYaml(blockchainPath string) error {
 	return ioutil.WriteFile(filePath, []byte(configtxYaml), 0755)
 }
 
-
 // The port checker functionality can be implemented in the enabler_manager and then it is passed as a function here too, as the fabric would have an implementation for
 // the ports it wishes to utilize.
 func (f *FabricDefinition) writeConfigs(userId string) (err error) {

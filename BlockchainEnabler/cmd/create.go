@@ -17,10 +17,15 @@ package cmd
 
 import (
 	"BlockchainEnabler/BlockchainEnabler/internal/deployer/docker"
+	"BlockchainEnabler/BlockchainEnabler/internal/enablerplatform"
 	"fmt"
 
 	"github.com/spf13/cobra"
 )
+
+var networkId string
+var userId string
+var createPlatformManager *enablerplatform.EnablerPlatformManager
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
@@ -31,20 +36,29 @@ var createCmd = &cobra.Command{
 	2. Loading the enabler information -> regarding the members.
 	3. Creating the gensis block and the configuration files.
 	4. Running the containers for the whole -> orderer, ca, peer and other if needed.`,
-	
-RunE: func(cmd *cobra.Command, args []string) error{
+
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("create called")
 		if err := docker.CheckDockerConfig(); err != nil {
 			return err
 		}
-
+		createPlatformManager = enablerplatform.GetInstance(&logger)
+		createPlatformManager.LoadUser(networkId, userId)
 		// steps to follow the user specifies the name of the platform and then we run its containers.
+		// it needs to load in the basic file from the directory and initialize it with the values for the network.
+		// We need to then check which kind of network it is and then we would call the network functions(objects).
+		// Also need to figure how to append the file that is generated inside the folder and then using this file to track all the parameters.
+		// 1 network can also have multiple members currently we are considering only 1 member. But the members can be multiple for the network.
+		// Now the user can have with the same user id created multiple
+		// Now we need to load the network information from the directory in order to set the corresponding values.
 		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(createCmd)
+	createCmd.Flags().StringVarP(&userId, "userId", "u", "", "Provide the user Id for the network you want to run.")
+	createCmd.Flags().StringVarP(&networkId, "netid", "n", "", "Provide the network id of the network you want to run.")
 
 	// Here you will define your flags and configuration settings.
 

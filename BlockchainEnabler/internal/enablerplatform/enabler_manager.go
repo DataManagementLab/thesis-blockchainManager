@@ -98,7 +98,23 @@ func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.Network) (err
 	}
 	return nil
 }
-
+func (em *EnablerPlatformManager) LoadUser(netId string, userId string) error {
+	infoFile := filepath.Join(constants.EnablerDir, userId, netId, fmt.Sprintf("%s_info.json", netId))
+	// can read from the json file outside the names of the networks that are created and then looping through them and opening them.
+	// or can use a file which is outside which contains all the info to the different networks and is appended one thing this would do is making things easier while searching for port used.
+	em.logger.Printf("Loading the Network ....")
+	em.logger.Printf("location for the create command %s", infoFile)
+	var network *types.Network
+	read, err := ioutil.ReadFile(infoFile)
+	if err != nil {
+		return err
+	}
+	json.Unmarshal(read, &network)
+	em.Enablers = append(em.Enablers, network)
+	em.logger.Printf("Network loaded successfully.")
+	// em.logger.Printf("%s",network.NetworkName)
+	return nil
+}
 func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	em.logger.Printf("The value for the userid %s", em.UserId)
 	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, s.NetworkName)
