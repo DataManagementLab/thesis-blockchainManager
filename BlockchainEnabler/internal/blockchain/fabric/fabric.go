@@ -172,8 +172,8 @@ func getDeployerInstance(deployerType string) (deployer deployer.IDeployer) {
 	return GetFabricDockerInstance()
 }
 
-func (f *FabricDefinition) Create() (err error) {
-	f.generateGenesisBlock(userIdentification)
+func (f *FabricDefinition) Create(userId string) (err error) {
+	f.generateGenesisBlock(userId)
 	// Step to do inside the create function
 
 	// 1.Also need to check if the docker is present in the host machine.
@@ -189,17 +189,18 @@ func (f *FabricDefinition) generateGenesisBlock(userId string) (err error) {
 	verbose := true
 	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "blockchain")
 	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
-	volumeName := fmt.Sprintf("%s_enabler_fabric", f.Enabler.NetworkName)
-
+	volumeName := fmt.Sprintf("%s_%s",userId, f.Enabler.NetworkName)
+	f.Logger.Printf("Generating the volume with volume name: %s",volumeName)
 	if err := docker.CreateVolume(volumeName, verbose); err != nil {
 		return err
 	}
-
+	f.Logger.Printf("Using the fabric tools to generate the msp with cryptogen tool in the shared volume location")
 	// Run cryptogen to generate MSP
 	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/template.yml", cryptogenYamlPath), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "cryptogen", "generate", "--config", "/etc/template.yml", "--output", "/etc/enabler/organizations"); err != nil {
 		return err
 	}
-
+	
+	f.Logger.Printf("Using the fabric tools to generate the gensis block in the shared volume location")
 	// Generate genesis block
 	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(blockchainDirectory, "configtx.yaml")), "hyperledger/fabric-tools:2.3", "configtxgen", "-outputBlock", "/etc/enabler/enabler.block", "-profile", "SingleOrgApplicationGenesis", "-channelID", "enablerchannel"); err != nil {
 		return err

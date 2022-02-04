@@ -44,7 +44,7 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	e.Members = make([]*types.Member, numberOfMembers)
 	e.NetworkName = fmt.Sprintf("enabler_network_%s_%d", e.BlockchainProvider, em.GetCurrentCount(e.BlockchainProvider))
 	em.logger.Printf("Initializing the members for the Network")
-	// Create members for each of the enabler ->
+	// Create members for each of the network ->
 	// This members will be the different components that are needed and connected with the core.
 
 	for i := 0; i < numberOfMembers; i++ {
@@ -81,6 +81,17 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
+func (em *EnablerPlatformManager) CreateNetwork(){
+	if em.Enablers !=nil{
+		for _,network := range em.Enablers{
+			network.InterfaceProvider.Create(em.UserId)
+		}
+	}
+	// Things to do here 
+	// 0. checking if the ports are available or not and then starting the network
+	// 1. calling the function for the blockchain network create.
+}
+
 func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.Network) (err error) {
 
 	network := types.Network{
@@ -93,7 +104,7 @@ func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.Network) (err
 	if err != nil {
 		fmt.Println(err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(constants.EnablerDir, em.UserId, enabler.NetworkName, fmt.Sprintf("%s_info.json", enabler.NetworkName)), platformConfigBytes, 0755); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(constants.EnablerDir, em.UserId, network.NetworkName, fmt.Sprintf("%s_info.json", network.NetworkName)), platformConfigBytes, 0755); err != nil {
 		return err
 	}
 	return nil
@@ -110,11 +121,17 @@ func (em *EnablerPlatformManager) LoadUser(netId string, userId string) error {
 		return err
 	}
 	json.Unmarshal(read, &network)
+	network.InterfaceProvider = em.getBlockchainProvider(network)
+
 	em.Enablers = append(em.Enablers, network)
+	// check for which provider it belongs to.
 	em.logger.Printf("Network loaded successfully.")
+	em.UserId = userId
 	// em.logger.Printf("%s",network.NetworkName)
 	return nil
 }
+
+
 func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	em.logger.Printf("The value for the userid %s", em.UserId)
 	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, s.NetworkName)
@@ -164,10 +181,10 @@ func (em *EnablerPlatformManager) GetCurrentCount(s string) int {
 	}
 }
 
-func (e *EnablerPlatformManager) getBlockchainProvider(enabler *types.Network) blockchain.IProvider {
-	switch enabler.BlockchainProvider {
+func (e *EnablerPlatformManager) getBlockchainProvider(network *types.Network) blockchain.IProvider {
+	switch network.BlockchainProvider {
 	case types.HyperledgerFabric.String():
-		return fabric.GetFabricInstance(e.logger, enabler, "docker")
+		return fabric.GetFabricInstance(e.logger, network, "docker")
 	default:
 		return nil
 	}

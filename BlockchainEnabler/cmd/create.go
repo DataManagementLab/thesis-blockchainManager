@@ -43,10 +43,14 @@ var createCmd = &cobra.Command{
 			return err
 		}
 		createPlatformManager = enablerplatform.GetInstance(&logger)
-		createPlatformManager.LoadUser(networkId, userId)
 		// steps to follow the user specifies the name of the platform and then we run its containers.
 		// it needs to load in the basic file from the directory and initialize it with the values for the network.
 		// We need to then check which kind of network it is and then we would call the network functions(objects).
+		createPlatformManager.LoadUser(networkId, userId)
+		logger.Printf(createPlatformManager.UserId)
+		createPlatformManager.CreateNetwork()
+		// one more thing to consider is to before running the network actually checking if the ports are available or not and then if not then changing the ports and 
+		// making these changes to the file generated-> docker compose as well as the others. Regarding the port information -> this can be in back log.
 		// Also need to figure how to append the file that is generated inside the folder and then using this file to track all the parameters.
 		// 1 network can also have multiple members currently we are considering only 1 member. But the members can be multiple for the network.
 		// Now the user can have with the same user id created multiple
