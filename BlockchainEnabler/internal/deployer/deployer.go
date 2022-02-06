@@ -4,6 +4,7 @@ import "BlockchainEnabler/BlockchainEnabler/internal/types"
 
 type IDeployer interface {
 	GenerateFiles(*types.Network, string) error
+	Deploy(string) error
 	// Monitor()x
 	// Deploy()
 	// GetServiceDefinition(string)

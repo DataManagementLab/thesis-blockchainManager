@@ -42,7 +42,7 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	e.BlockchainProvider = initOptions.BlockchainType.String()
 	e.ExposedBlockchainPort = initOptions.ServicesPort
 	e.Members = make([]*types.Member, numberOfMembers)
-	e.NetworkName = fmt.Sprintf("enabler_network_%s_%d", e.BlockchainProvider, em.GetCurrentCount(e.BlockchainProvider))
+	e.NetworkName = fmt.Sprintf("%s_enabler_network_%s_%d", userId, e.BlockchainProvider, em.GetCurrentCount(e.BlockchainProvider))
 	em.logger.Printf("Initializing the members for the Network")
 	// Create members for each of the network ->
 	// This members will be the different components that are needed and connected with the core.
@@ -81,13 +81,13 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
-func (em *EnablerPlatformManager) CreateNetwork(){
-	if em.Enablers !=nil{
-		for _,network := range em.Enablers{
+func (em *EnablerPlatformManager) CreateNetwork() {
+	if em.Enablers != nil {
+		for _, network := range em.Enablers {
 			network.InterfaceProvider.Create(em.UserId)
 		}
 	}
-	// Things to do here 
+	// Things to do here
 	// 0. checking if the ports are available or not and then starting the network
 	// 1. calling the function for the blockchain network create.
 }
@@ -130,7 +130,6 @@ func (em *EnablerPlatformManager) LoadUser(netId string, userId string) error {
 	// em.logger.Printf("%s",network.NetworkName)
 	return nil
 }
-
 
 func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	em.logger.Printf("The value for the userid %s", em.UserId)

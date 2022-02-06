@@ -42,10 +42,10 @@ func GenerateServiceDefinitions(member *types.Member, memberId string) ([]*docke
 				},
 				Command: "sh -c 'fabric-ca-server start -b admin:adminpw'",
 				Volumes: []string{
-					"enabler_fabric:/etc/enabler",
+					fmt.Sprintf("%s:/etc/enabler", "fabric"),
 				},
 			},
-			VolumeNames: []string{"fabric_ca"},
+			VolumeNames: []string{"fabric_ca", "fabric"},
 		},
 
 		// Fabric Orderer
@@ -82,8 +82,8 @@ func GenerateServiceDefinitions(member *types.Member, memberId string) ([]*docke
 				WorkingDir: "/opt/gopath/src/github.com/hyperledger/fabric",
 				Command:    "orderer",
 				Volumes: []string{
-					"enabler_fabric:/etc/enabler",
-					"fabric_orderer:/var/hyperledger/production/orderer",
+					fmt.Sprintf("%s:/etc/enabler", "fabric"),
+					fmt.Sprintf("fabric_orderer:/var/hyperledger/production/orderer"),
 				},
 				Ports: []string{
 					fmt.Sprintf("%d:%d", external["orderer_general_listen_port"], external["orderer_general_listen_port"]),
@@ -121,7 +121,7 @@ func GenerateServiceDefinitions(member *types.Member, memberId string) ([]*docke
 					"CORE_OPERATIONS_LISTENADDRESS":         fmt.Sprintf("0.0.0.0:%d", external["core_operations_listen_port"]),
 				},
 				Volumes: []string{
-					"enabler_fabric:/etc/enabler",
+					fmt.Sprintf("%s:/etc/enabler", "fabric"),
 					"fabric_peer:/var/hyperledger/production",
 					"/var/run/docker.sock:/host/var/run/docker.sock",
 				},
@@ -136,14 +136,22 @@ func GenerateServiceDefinitions(member *types.Member, memberId string) ([]*docke
 	return serviceDefinitions, nil
 }
 
-func (fabDocker *FabricDocker) Deploy() {
+func (fabDocker *FabricDocker) Deploy(workingDir string) error {
+	// Needs to now run the docker containers this can be done using the docker compose file
+	// fmt.Printf("Working Directory for docker %s", workingDir)
 
+	err := docker.RunDockerComposeCommand(workingDir, true, true, "up", "-d")
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId string) (err error) {
+	fmt.Printf("The value of the user id %s", userId)
 	compose := docker.CreateDockerCompose()
 	for _, member := range enabler.Members {
-		serviceDefinition, err := GenerateServiceDefinitions(member, fmt.Sprintf("%s_%s", enabler.NetworkName, member.ID))
+		serviceDefinition, err := GenerateServiceDefinitions(member, fmt.Sprintf("%s",  enabler.NetworkName))
 		if err != nil {
 			return err
 		}

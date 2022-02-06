@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"os"
 	"path"
+	"syscall"
 	"time"
 
 	"BlockchainEnabler/BlockchainEnabler/internal/deployer"
@@ -120,11 +122,11 @@ func (f *FabricDefinition) writeConfigs(userId string) (err error) {
 }
 func (f *FabricDefinition) setValidPorts() {
 	// Assign the member with the external ports that are required for the certificate authority, orderer and peers.
-	host := "127.0.0.1"
+	host := "0.0.0.0"
 	for _, member := range f.Enabler.Members {
-		if res := checkPortIsOpened(host, member.ExposedPort); res == false {
+		if res, _ := checkPortIsOpened(host, member.ExposedPort); res == false {
 			for i := 1; i < 5; i++ {
-				if checkPortIsOpened(host, member.ExposedPort+i*100) {
+				if res, _ := checkPortIsOpened(host, member.ExposedPort+i*100); res {
 					// set the exposed admin port to then other values.
 					member.ExposedAdminPort = member.ExposedPort + i*100 + 1
 					member.ExposedPort = member.ExposedPort + i*100
@@ -135,9 +137,9 @@ func (f *FabricDefinition) setValidPorts() {
 		}
 		member.ExternalPorts = setExternalPorts(member)
 		for _, port := range member.ExternalPorts.(map[string]int) {
-			if res := checkPortIsOpened(host, port); res == false {
+			if res, _ := checkPortIsOpened(host, port); res == false {
 				for i := 1; i < 5; i++ {
-					if checkPortIsOpened(host, port+i*100) {
+					if res, _ := checkPortIsOpened(host, port+i*100); res {
 						// set the exposed admin port to then other values.
 						port = port + i*100
 						break
@@ -173,11 +175,21 @@ func getDeployerInstance(deployerType string) (deployer deployer.IDeployer) {
 }
 
 func (f *FabricDefinition) Create(userId string) (err error) {
-	f.generateGenesisBlock(userId)
 	// Step to do inside the create function
 
 	// 1.Also need to check if the docker is present in the host machine.
 	// 2. We would need to run the first time setup where the initiailization of blockcahin node happens.
+	f.Deployer = getDeployerInstance(f.DeployerType)
+	f.generateGenesisBlock(userId)
+	workingDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
+	fmt.Printf("WOrking directory %s", workingDir)
+
+	if err := f.Deployer.Deploy(workingDir); err != nil {
+		return err
+	}
+	// Next step is to actually run the container and pass the parameter in the containers.
+	// For this particular use case we will get hte docker instance of the machine and then run the container in the fabric_docker file.
+	// This container start up can be different according to the container so for example the startup function in the deployerinterface should be created.
 
 	// Currently i am planning to use the functions the docker code from the firefly cli seems quite nice way of handling things.
 	return nil
@@ -189,8 +201,10 @@ func (f *FabricDefinition) generateGenesisBlock(userId string) (err error) {
 	verbose := true
 	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "blockchain")
 	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
-	volumeName := fmt.Sprintf("%s_%s",userId, f.Enabler.NetworkName)
-	f.Logger.Printf("Generating the volume with volume name: %s",volumeName)
+	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
+
+	// volumeName := fmt.Sprintf("enabler_fabric")
+	f.Logger.Printf("Generating the volume with volume name: %s", volumeName)
 	if err := docker.CreateVolume(volumeName, verbose); err != nil {
 		return err
 	}
@@ -199,9 +213,10 @@ func (f *FabricDefinition) generateGenesisBlock(userId string) (err error) {
 	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/template.yml", cryptogenYamlPath), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "cryptogen", "generate", "--config", "/etc/template.yml", "--output", "/etc/enabler/organizations"); err != nil {
 		return err
 	}
-	
-	f.Logger.Printf("Using the fabric tools to generate the gensis block in the shared volume location")
+
+	f.Logger.Printf("Using the fabric tools to generate the Gensis block in the shared volume location")
 	// Generate genesis block
+	// might also need to generate the configtx yaml file according the orgname and even the name as example.com does not seem quite good enough
 	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(blockchainDirectory, "configtx.yaml")), "hyperledger/fabric-tools:2.3", "configtxgen", "-outputBlock", "/etc/enabler/enabler.block", "-profile", "SingleOrgApplicationGenesis", "-channelID", "enablerchannel"); err != nil {
 		return err
 	}
@@ -224,17 +239,43 @@ func (f *FabricDefinition) generateGenesisBlock(userId string) (err error) {
 // 	return GenerateServiceDefinitions(f.Enabler)
 // }
 
-func checkPortIsOpened(host string, port int) bool {
+func checkPortIsOpened(host string, port int) (bool, error) {
+	// timeout := time.Millisecond * 500
+
 	timeout := time.Millisecond * 500
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, fmt.Sprint(port)), timeout)
-	if err != nil {
-		return false
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", fmt.Sprint(port)), timeout)
+
+	if netError, ok := err.(net.Error); ok && netError.Timeout() {
+		return true, nil
 	}
+
+	switch t := err.(type) {
+
+	case *net.OpError:
+		switch t := t.Unwrap().(type) {
+		case *os.SyscallError:
+			if t.Syscall == "connect" {
+				return true, nil
+			}
+		}
+		if t.Op == "dial" {
+			return false, err
+		} else if t.Op == "read" {
+			return true, nil
+		}
+
+	case syscall.Errno:
+		if t == syscall.ECONNREFUSED {
+			return true, nil
+		}
+	}
+
 	if conn != nil {
-		conn.Close()
-		return true
+		defer conn.Close()
+		return false, nil
 	}
-	return false
+	return true, nil
+
 }
 
 // Few things need to be changed
