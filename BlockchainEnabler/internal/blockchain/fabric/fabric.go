@@ -182,11 +182,15 @@ func (f *FabricDefinition) Create(userId string) (err error) {
 	f.Deployer = getDeployerInstance(f.DeployerType)
 	f.generateGenesisBlock(userId)
 	workingDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
-	fmt.Printf("WOrking directory %s", workingDir)
+	fmt.Printf("Working directory %s", workingDir)
 
 	if err := f.Deployer.Deploy(workingDir); err != nil {
 		return err
 	}
+
+	f.createChannel(userId)
+	f.joinChannel(userId)
+	f.getBlockInformation(userId)
 	// Next step is to actually run the container and pass the parameter in the containers.
 	// For this particular use case we will get hte docker instance of the machine and then run the container in the fabric_docker file.
 	// This container start up can be different according to the container so for example the startup function in the deployerinterface should be created.
@@ -217,11 +221,38 @@ func (f *FabricDefinition) generateGenesisBlock(userId string) (err error) {
 	f.Logger.Printf("Using the fabric tools to generate the Gensis block in the shared volume location")
 	// Generate genesis block
 	// might also need to generate the configtx yaml file according the orgname and even the name as example.com does not seem quite good enough
+	fmt.Printf("Location of the configtx file %s",path.Join(blockchainDirectory, "configtx.yaml"))
 	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(blockchainDirectory, "configtx.yaml")), "hyperledger/fabric-tools:2.3", "configtxgen", "-outputBlock", "/etc/enabler/enabler.block", "-profile", "SingleOrgApplicationGenesis", "-channelID", "enablerchannel"); err != nil {
+		//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
 		return err
 	}
 
 	return nil
+}
+
+func (f *FabricDefinition) createChannel(userId string) (err error) {
+	verbose := true
+	f.Logger.Printf("Creating channel")
+	networkDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
+	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
+	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "osnadmin", "channel", "join", "--channelID", "enablerchannel", "--config-block", "/etc/enabler/enabler.block", "-o", "fabric_orderer:7053", "--ca-file", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/ca.crt", "--client-cert", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/client.crt", "--client-key", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/client.key")
+}
+
+func (f *FabricDefinition) joinChannel(userId string) error {
+	verbose := true
+	f.Logger.Printf("Joining channel")
+	networkDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
+	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
+	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "join", "-b", "/etc/enabler/enabler.block")
+}
+
+func (f *FabricDefinition) getBlockInformation(userId string) error {
+	verbose := true
+	f.Logger.Printf("Get block information")
+	networkDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
+	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
+	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "configtxlator", "proto_decode", "--input", "/etc/enabler/enabler.block", "--output", "/etc/enabler/enabler.json", "--type", "common.Block")
+
 }
 
 // We could actually check out with the deployer instance if it is docker then using the getDockerServiceDefinition,
