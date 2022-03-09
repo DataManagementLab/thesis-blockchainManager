@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"os/exec"
 	"path"
 	"syscall"
 	"time"
@@ -215,10 +216,9 @@ func (f *FabricDefinition) Join(networkId string, orgName string, networkId2 str
 	f.createOrganizationForJoin(userid, networkId, orgName)
 	// The previous step should be asynchronous though
 
-	// f.fetchConfigBlock(userid)
+	f.fetchConfigBlock(userid)
 
-	// f.envelopeBlockCreation(userid, networkId, orgName)
-	// f.decodeToJson()
+	f.envelopeBlockCreation(userid, networkId, orgName)
 	// So go to the folder structure and then create a docker instance and then create a volume, copy files in the volume. -> crypto, configtx
 	// Once volume is done then create the crypto files using crypto command.
 	return nil
@@ -240,9 +240,12 @@ func (f *FabricDefinition) createOrganizationForJoin(userId string, networkId st
 		return err
 	}
 	// Running the configtxgen command to get the org3 definition and store it in the current folder.
-	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", configtxPath), "-v", fmt.Sprintf("%s:/etc/enabler", enablerPath), "hyperledger/fabric-tools:2.3", "configtxgen", "--printOrg", fmt.Sprintf("%sMSP", orgName), ">", fmt.Sprintf("/etc/enabler/%s.json", orgName)); err != nil {
+	out, err := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm -v %s:/etc/hyperledger/fabric/configtx.yaml -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxgen --printOrg %sMSP > %s/%s.json", configtxPath, enablerPath, orgName, enablerPath, orgName)).Output()
+
+	if err != nil {
 		return err
 	}
+	fmt.Printf(" %s\n", out)
 	return nil
 }
 
@@ -256,41 +259,56 @@ func (f *FabricDefinition) fetchConfigBlock(userId string) (err error) {
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
 		"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3",
 		"configtxlator", "proto_decode", "--input", "/etc/enabler/config_block.pb", "--type", "common.Block", "--output", "/etc/enabler/config.json")
-	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "/bin/sh", "-c", "jq",
-		".data.data[0].payload.data.config", "/etc/enabler/config.json","|","tee", fmt.Sprintf("%s/enabler/config1.json", networkDir))
-	// return nil
+
+	out, err := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 jq .data.data[0].payload.data.config /etc/enabler/config.json > %s/enabler/config1.json", f.Enabler.NetworkName, volumeName, networkDir)).Output()
+	if err != nil {
+		return err
+	}
+	fmt.Printf(" %s\n", out)
+	return nil
 }
 func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string, orgName string) (err error) {
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
+	// Required Step
+
 	enablerPath := path.Join(constants.EnablerDir, userId, networkId, "enabler")
 	orgDefFilePath := path.Join(enablerPath, "Org3.json")
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
-	volumePath := "/etc/enabler"
-	// docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
-	// 	"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3",
-	// 	"peer", "channel", "fetch", "config", "/etc/enabler/config_block.pb", "-c", "enablerchannel", "-o", "fabric_orderer:7050", "--tls", "--cafile", "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem")
-	// docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
-	// 	"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3",
-	// 	"configtxlator", "proto_decode", "--input", "/etc/enabler/config_block.pb", "--type", "common.Block", "--output", "/etc/enabler/config.json")
-	// Here we now need to get the org3.json file and put it into the same directory as the /etc/enabler
+	// Required Step
 
-	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s:/etc/enabler/org3.json", orgDefFilePath), "hyperledger/fabric-tools:2.3", "jq", "-s",
-		".[0]", "*{\"channel_group\":{\"groups\":{\"Application\":{\"groups\":{\"Org3MSP\":.[1]}}}}}", "/etc/enabler/config.json", "/etc/enabler/org3.json", ">", fmt.Sprintf("%s/modified_config.json", volumePath))
-
-}
-
-func (f *FabricDefinition) encodeToProto() (err error) {
-	return nil
-}
-
-func (f *FabricDefinition) decodeToJson(fileToDecode string, decodedFile string, decodingType string) (err error) {
-	f.Logger.Printf("Decoding the file to %s", decodedFile)
-	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
-	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
-	if err := docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "configtxlator", "proto_decode", "--input", fileToDecode, "--type", decodingType, "|", "jq",
-		".data.data[0].payload.data.config", ">", decodedFile); err != nil {
+	out, err := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler -v %s:/etc/enabler/org3.json -v %s/enabler/config1.json:/etc/enabler/config1.json hyperledger/fabric-tools:2.3 jq -s '.[0] * {\"channel_group\":{\"groups\":{\"Application\":{\"groups\": {\"Org3MSP\":.[1]}}}}}' /etc/enabler/config1.json /etc/enabler/org3.json > %s/enabler/modified_config.json ", f.Enabler.NetworkName, volumeName, orgDefFilePath, networkDir, networkDir)).Output()
+	if err != nil {
 		return err
 	}
+	// Required Step
+
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s/enabler/config1.json:/etc/enabler/config1.json", networkDir), "-v", fmt.Sprintf("%s/enabler/modified_config.json:/etc/enabler/modified_config.json", networkDir), "hyperledger/fabric-tools:2.3",
+		"configtxlator", "proto_encode", "--input", "/etc/enabler/config1.json", "--type", "common.Config", "--output", "/etc/enabler/config1.pb")
+	// Required Step
+
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s/enabler/config1.json:/etc/enabler/config1.json", networkDir), "-v", fmt.Sprintf("%s/enabler/modified_config.json:/etc/enabler/modified_config.json", networkDir), "hyperledger/fabric-tools:2.3",
+		"configtxlator", "proto_encode", "--input", "/etc/enabler/modified_config.json", "--type", "common.Config", "--output", "/etc/enabler/modified_config.pb")
+	// Required Step
+
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s/enabler/config1.json:/etc/enabler/config1.json", networkDir), "-v", fmt.Sprintf("%s/enabler/modified_config.json:/etc/enabler/modified_config.json", networkDir), "hyperledger/fabric-tools:2.3",
+		"configtxlator", "compute_update", "--channel_id", "enablerchannel", "--original", "/etc/enabler/config1.pb", "--updated", "/etc/enabler/modified_config.pb", "--output", "/etc/enabler/org3_update.pb")
+	// Required Step
+	out, err = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxlator proto_decode --input /etc/enabler/org3_update.pb --type common.ConfigUpdate | jq . > %s/enabler/org3_update.json", f.Enabler.NetworkName, volumeName, networkDir)).Output()
+
+	// Required Step
+
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 echo '{\"payload\":{\"header\":{\"channel_header\":{\"channel_id\":\"enablerchannel\", \"type\":2}},\"data\":{\"config_update\":'$(cat /%s/enabler/org3_update.json)'}}}'| jq . > %s/enabler/org3_update_in_envelope.json", f.Enabler.NetworkName, volumeName, networkDir, networkDir))
+
+	fmt.Printf("%s", cmd.String())
+	out, err = cmd.Output()
+	if err != nil {
+		return err
+	}
+	fmt.Printf(" Printng out %s\n", out)
+
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s/enabler/org3_update_in_envelope.json:/etc/enabler/org3_update_in_envelope.json", networkDir), "hyperledger/fabric-tools:2.3",
+		"configtxlator", "proto_encode", "--input", "/etc/enabler/org3_update_in_envelope.json", "--type", "common.Envelope", "--output", "/etc/enabler/org3_update_in_envelope.pb")
+
 	return nil
 }
 
