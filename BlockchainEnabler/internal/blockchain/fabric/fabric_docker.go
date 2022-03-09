@@ -100,13 +100,14 @@ func GenerateServiceDefinitions(member *types.Member, memberId string) ([]*docke
 			Service: &docker.Service{
 				Image:         "hyperledger/fabric-peer:2.3",
 				ContainerName: fmt.Sprintf("%s_fabric_peer", memberId),
+				Command:       "peer node start",
 				Environment: map[string]string{
 					"CORE_VM_ENDPOINT":                      "unix:///host/var/run/docker.sock",
 					"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE": fmt.Sprintf("%s_default", memberId),
 					"FABRIC_LOGGING_SPEC":                   "INFO",
 					"CORE_PEER_TLS_ENABLED":                 "true",
 					"CORE_PEER_PROFILE_ENABLED":             "false",
-					"CORE_PEER_MSPCONFIGPATH":               "/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/msp",
+					"CORE_PEER_MSPCONFIGPATH":               "/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp",
 					"CORE_PEER_TLS_CERT_FILE":               "/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/server.crt",
 					"CORE_PEER_TLS_KEY_FILE":                "/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/server.key",
 					"CORE_PEER_TLS_ROOTCERT_FILE":           "/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt",
@@ -151,7 +152,7 @@ func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId stri
 	fmt.Printf("The value of the user id %s", userId)
 	compose := docker.CreateDockerCompose()
 	for _, member := range enabler.Members {
-		serviceDefinition, err := GenerateServiceDefinitions(member, fmt.Sprintf("%s",  enabler.NetworkName))
+		serviceDefinition, err := GenerateServiceDefinitions(member, fmt.Sprintf("%s", enabler.NetworkName))
 		if err != nil {
 			return err
 		}

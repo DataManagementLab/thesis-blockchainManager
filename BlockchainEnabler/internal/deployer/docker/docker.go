@@ -61,6 +61,11 @@ func RunDockerComposeCommand(workingDir string, showCommand bool, pipeStdout boo
 	_, err := runCommand(dockerCmd, showCommand, pipeStdout, command...)
 	return err
 }
+func DockerReturnCommand(workingDir string, showCommand bool, pipeStdout bool, command ...string) (string, error) {
+	dockerCmd := exec.Command("docker", command...)
+	dockerCmd.Dir = workingDir
+	return dockerCmd.String(), nil
+}
 
 func RunDockerCommandBuffered(workingDir string, showCommand bool, command ...string) (string, error) {
 	dockerCmd := exec.Command("docker", command...)
