@@ -26,6 +26,7 @@ import (
 var networkId string
 var userId string
 var createPlatformManager *enablerplatform.EnablerPlatformManager
+var useSDK bool
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
@@ -48,8 +49,15 @@ var createCmd = &cobra.Command{
 		// We need to then check which kind of network it is and then we would call the network functions(objects).
 		createPlatformManager.LoadUser(networkId, userId)
 		logger.Printf(createPlatformManager.UserId)
-		createPlatformManager.CreateNetwork()
-		// one more thing to consider is to before running the network actually checking if the ports are available or not and then if not then changing the ports and 
+		useSDK:= false
+		fmt.Printf("The value of sdk is %v", useSDK)
+		if useSDK {
+			createPlatformManager.CreateNetworkUsingSDK()
+		} else {
+			createPlatformManager.CreateNetwork()
+		}
+
+		// one more thing to consider is to before running the network actually checking if the ports are available or not and then if not then changing the ports and
 		// making these changes to the file generated-> docker compose as well as the others. Regarding the port information -> this can be in back log.
 		// Also need to figure how to append the file that is generated inside the folder and then using this file to track all the parameters.
 		// 1 network can also have multiple members currently we are considering only 1 member. But the members can be multiple for the network.
@@ -63,7 +71,7 @@ func init() {
 	rootCmd.AddCommand(createCmd)
 	createCmd.Flags().StringVarP(&userId, "userId", "u", "", "Provide the user Id for the network you want to run.")
 	createCmd.Flags().StringVarP(&networkId, "netid", "n", "", "Provide the network id of the network you want to run.")
-
+	createCmd.Flags().BoolVarP(&useSDK, "useSDK", "s", false, "Function to enable or disable the use of SDK default: true")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

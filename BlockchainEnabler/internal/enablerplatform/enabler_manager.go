@@ -84,12 +84,20 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 func (em *EnablerPlatformManager) CreateNetwork() {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId)
+			network.InterfaceProvider.Create(em.UserId,false)
 		}
 	}
 	// Things to do here
 	// 0. checking if the ports are available or not and then starting the network
 	// 1. calling the function for the blockchain network create.
+}
+
+func (em *EnablerPlatformManager) CreateNetworkUsingSDK(){
+	if em.Enablers != nil{
+		for _, network := range em.Enablers{
+			network.InterfaceProvider.Create(em.UserId,true)
+		}
+	}
 }
 
 func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.Network) (err error) {
