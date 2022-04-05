@@ -49,7 +49,6 @@ var createCmd = &cobra.Command{
 		// We need to then check which kind of network it is and then we would call the network functions(objects).
 		createPlatformManager.LoadUser(networkId, userId)
 		logger.Printf(createPlatformManager.UserId)
-		useSDK:= false
 		fmt.Printf("The value of sdk is %v", useSDK)
 		if useSDK {
 			createPlatformManager.CreateNetworkUsingSDK()
