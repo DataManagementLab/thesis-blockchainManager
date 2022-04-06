@@ -18,7 +18,6 @@ import (
 
 	mspclient "github.com/hyperledger/fabric-sdk-go/pkg/client/msp"
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/resmgmt"
-	"github.com/hyperledger/fabric-sdk-go/pkg/common/errors/retry"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/core"
 	"github.com/hyperledger/fabric-sdk-go/pkg/common/providers/msp"
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
@@ -247,8 +246,15 @@ func (f *FabricDefinition) Join(networkId string, orgName string, networkId2 str
 	f.envelopeBlockCreation(userid, networkId, orgName)
 	f.signConfig()
 	f.signAndUpdateConfig()
-	f.fetchChannelGenesisBlock(networkId, orgName)
-	f.loadGenesisFileToOrg(networkId, orgName)
+	f.fetchChannelGenesisBlock()
+	f.loadGenesisFileToOrg(networkId)
+	workingDir := path.Join(constants.EnablerDir, userid, networkId)
+
+	f.Deployer.Deploy(workingDir)
+
+	f.joinOtherOrgPeerToChannel(userid, networkId)
+	// Run the docker compose from the org3 -> container
+	//  Next join the channel from org3 peer.
 
 	// Bring up the docker compose file , the container and try to join the channel using the container
 	// Currently there is a probelm with the peer channel fetch config -|> As the config is unable to be fetched
@@ -378,7 +384,7 @@ func (f *FabricDefinition) signAndUpdateConfig() error {
 	return nil
 }
 
-func (f *FabricDefinition) fetchChannelGenesisBlock(networkId string, orgName string) error {
+func (f *FabricDefinition) fetchChannelGenesisBlock() error {
 	f.Logger.Printf("Fetching config block for channel")
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
@@ -392,7 +398,7 @@ func (f *FabricDefinition) fetchChannelGenesisBlock(networkId string, orgName st
 	docker.CopyFromContainer(fmt.Sprintf("%s_fabric_peer", f.Enabler.NetworkName), "/etc/enabler/channel_genesis_block.block", fmt.Sprintf("%s/enabler/channel_genesis_block.block", networkDir), verbose)
 	return nil
 }
-func (f *FabricDefinition) loadGenesisFileToOrg(networkId string, orgName string) error {
+func (f *FabricDefinition) loadGenesisFileToOrg(networkId string) error {
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
 	volumeName := fmt.Sprintf("%s_fabric", networkId)
 	// enablerPath := path.Join(constants.EnablerDir, userIdentification, networkId, "enabler")
@@ -454,7 +460,7 @@ func createNewContext(configProvider core.ConfigProvider, blockchainDirectoryPat
 		SigningIdentities: []msp.SigningIdentity{adminId},
 	}
 
-	txnId, err := resclient.SaveChannel(saveChannelRequest, resmgmt.WithRetry(retry.DefaultResMgmtOpts), resmgmt.WithOrdererEndpoint("fabric_orderer"))
+	txnId, err := resclient.SaveChannel(saveChannelRequest, resmgmt.WithOrdererEndpoint("fabric_orderer.example.com"))
 
 	if err != nil || txnId.TransactionID == "" {
 		return errors.WithMessage(err, "failed to save channel")
@@ -539,6 +545,15 @@ func (f *FabricDefinition) joinChannel(userId string) error {
 	networkDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
 	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "join", "-b", "/etc/enabler/enabler.block")
+}
+
+func (f *FabricDefinition) joinOtherOrgPeerToChannel(userId string, networkId string) error {
+	verbose := true
+	f.Logger.Printf("Joining channel")
+	networkDir := path.Join(constants.EnablerDir, userId, networkId)
+	volumeName := fmt.Sprintf("%s_fabric", networkId)
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "join", "-b", "/etc/enabler/channel_genesis_block.block")
+	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "getinfo", "-c", "enablerchannel")
 }
 
 func (f *FabricDefinition) getBlockInformation(userId string) error {
