@@ -17,6 +17,7 @@
 package fabric
 
 import (
+	"fmt"
 	"io/ioutil"
 
 	"gopkg.in/yaml.v2"
@@ -110,12 +111,12 @@ type FabricNetworkConfig struct {
 	Version                string                    `yaml:"version,omitempty"`
 }
 
-func WriteNetworkConfig(outputPath string) error {
+func WriteNetworkConfig(outputPath string, enablerPath string) error {
 	networkConfig := &FabricNetworkConfig{
 		CertificateAuthorities: map[string]*NetworkEntity{
 			"org1.example.com": {
 				TLSCACerts: &Path{
-					Path: "/etc/enabler/organizations/peerOrganizations/org1.example.com/ca/fabric_ca.org1.example.com-cert.pem",
+					Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/ca/fabric_ca.org1.example.com-cert.pem", enablerPath),
 				},
 				URL: "http://fabric_ca:7054",
 				Registrar: &Registrar{
@@ -151,12 +152,12 @@ func WriteNetworkConfig(outputPath string) error {
 			},
 			CredentialStore: &CredentialStore{
 				CryptoStore: &Path{
-					Path: "/etc/enabler/organizations/peerOrganizations/org1.example.com/msp",
+					Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/msp", enablerPath),
 				},
-				Path: "/etc/enabler/organizations/peerOrganizations/org1.example.com/msp",
+				Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/msp", enablerPath),
 			},
 			CryptoConfig: &Path{
-				Path: "/etc/enabler/organizations/peerOrganizations/org1.example.com/msp",
+				Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/msp", enablerPath),
 			},
 			Logging: &Logging{
 				Level: "info",
@@ -165,10 +166,10 @@ func WriteNetworkConfig(outputPath string) error {
 			TLSCerts: &TLSCerts{
 				Client: &TLSCertsClient{
 					Cert: &Path{
-						Path: "/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt",
+						Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt", enablerPath),
 					},
 					Key: &Path{
-						Path: "/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key",
+						Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key", enablerPath),
 					},
 				},
 			},
@@ -176,7 +177,7 @@ func WriteNetworkConfig(outputPath string) error {
 		Orderers: map[string]*NetworkEntity{
 			"fabric_orderer": {
 				TLSCACerts: &Path{
-					Path: "/etc/enabler/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem",
+					Path: fmt.Sprintf("%s/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem", enablerPath),
 				},
 				URL: "grpcs://fabric_orderer:7050",
 			},
@@ -184,7 +185,7 @@ func WriteNetworkConfig(outputPath string) error {
 		Organizations: map[string]*Organization{
 			"org1.example.com": {
 				CertificateAuthorities: []string{"org1.example.com"},
-				CryptoPath:             "/tmp/msp",
+				CryptoPath:             fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", enablerPath),
 				MSPID:                  "Org1MSP",
 				Peers:                  []string{"fabric_peer"},
 			},
@@ -192,7 +193,7 @@ func WriteNetworkConfig(outputPath string) error {
 		Peers: map[string]*NetworkEntity{
 			"fabric_peer": {
 				TLSCACerts: &Path{
-					Path: "/etc/enabler/organizations/peerOrganizations/org1.example.com/tlsca/tlsfabric_ca.org1.example.com-cert.pem",
+					Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/tlsca/tlsfabric_ca.org1.example.com-cert.pem", enablerPath),
 				},
 				URL: "grpcs://fabric_peer:7051",
 			},
