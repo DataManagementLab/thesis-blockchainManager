@@ -279,9 +279,9 @@ Profiles:
       Organizations:
         - *Org1
       Capabilities: *ApplicationCapabilities
-    Consortium: SampleConsortium
-    Consortiums:
-      SampleConsortium:
-        Organizations:
-          - *Org1
+    # Consortium: SampleConsortium
+    # Consortiums:
+    #   SampleConsortium:
+    #     Organizations:
+    #       - *Org1
                   
