@@ -84,7 +84,7 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 func (em *EnablerPlatformManager) CreateNetwork() {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId,false)
+			network.InterfaceProvider.Create(em.UserId, false)
 		}
 	}
 	// Things to do here
@@ -92,10 +92,10 @@ func (em *EnablerPlatformManager) CreateNetwork() {
 	// 1. calling the function for the blockchain network create.
 }
 
-func (em *EnablerPlatformManager) CreateNetworkUsingSDK(){
-	if em.Enablers != nil{
-		for _, network := range em.Enablers{
-			network.InterfaceProvider.Create(em.UserId,true)
+func (em *EnablerPlatformManager) CreateNetworkUsingSDK() {
+	if em.Enablers != nil {
+		for _, network := range em.Enablers {
+			network.InterfaceProvider.Create(em.UserId, true)
 		}
 	}
 }
@@ -156,15 +156,28 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) JoinNetwork(networkId string,orgName string, networkId2 string, joiningOrgName string) error{
+func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, networkId2 string, joiningOrgName string) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			if network.NetworkName == networkId2{
-				return network.InterfaceProvider.Join(networkId, orgName,networkId2,joiningOrgName,em.UserId)
+			if network.NetworkName == networkId2 {
+				return network.InterfaceProvider.Join(networkId, orgName, networkId2, joiningOrgName, em.UserId)
 			}
 		}
 	}
-	
+
+	// currently will just create a demo netowk and try to join using that network.
+	return nil
+}
+
+func (em *EnablerPlatformManager) LeaveNetwork(networkId string, orgName string) error {
+	if em.Enablers != nil {
+		for _, network := range em.Enablers {
+			
+				return network.InterfaceProvider.Leave(networkId, orgName, em.UserId)
+			
+		}
+	}
+
 	// currently will just create a demo netowk and try to join using that network.
 	return nil
 }

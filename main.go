@@ -17,11 +17,8 @@ package main
 
 import (
 	"BlockchainEnabler/BlockchainEnabler/cmd"
-	"fmt"
 )
 
-
 func main() {
-	fmt.Println("Inside the main function")
 	cmd.Execute()
 }

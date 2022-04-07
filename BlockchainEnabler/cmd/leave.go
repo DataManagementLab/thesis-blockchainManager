@@ -16,10 +16,18 @@ limitations under the License.
 package cmd
 
 import (
+	"BlockchainEnabler/BlockchainEnabler/internal/enablerplatform"
 	"fmt"
 
 	"github.com/spf13/cobra"
 )
+
+var leavePlatformEnabler *enablerplatform.EnablerPlatformManager
+
+var orgID string
+var networkName string
+var parentNetworkName string
+var userID string
 
 // leaveCmd represents the leave command
 var leaveCmd = &cobra.Command{
@@ -29,11 +37,21 @@ var leaveCmd = &cobra.Command{
 	The user needs to provide the user_name and then the `,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("leave called")
+		leavePlatformEnabler = enablerplatform.GetInstance(&logger)
+		leavePlatformEnabler.LoadUser(parentNetworkName, userID)
+		// logger.Printf(joinPlatformManager.UserId)
+		
+		leavePlatformEnabler.LeaveNetwork(networkName, orgID)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(leaveCmd)
+	leaveCmd.Flags().StringVarP(&userID, "userId", "u", "", "The User ID for the user.")
+
+	leaveCmd.Flags().StringVarP(&orgID, "orgName", "o", "", "The organization name which wants to leave the channel.")
+	leaveCmd.Flags().StringVarP(&networkName, "networkName", "n", "", "The Network the organization which wants to leave")
+	leaveCmd.Flags().StringVarP(&parentNetworkName, "parentNetworkName", "p", "", "The parent network for the organization which wants to leave")
 
 	// Here you will define your flags and configuration settings.
 
