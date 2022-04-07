@@ -244,8 +244,8 @@ func (f *FabricDefinition) Join(networkId string, orgName string, networkId2 str
 	f.fetchConfigBlock(userid)
 
 	f.envelopeBlockCreation(userid, networkId, orgName)
-	f.signConfig()
-	f.signAndUpdateConfig()
+	f.signConfig("org3_update_in_envelope.pb")
+	f.signAndUpdateConfig("org3_update_in_envelope.pb")
 	f.fetchChannelGenesisBlock()
 	f.loadGenesisFileToOrg(networkId)
 	workingDir := path.Join(constants.EnablerDir, userid, networkId)
@@ -264,6 +264,16 @@ func (f *FabricDefinition) Join(networkId string, orgName string, networkId2 str
 
 	// So go to the folder structure and then create a docker instance and then create a volume, copy files in the volume. -> crypto, configtx
 	// Once volume is done then create the crypto files using crypto command.
+	return nil
+}
+func (f *FabricDefinition) Leave(networkId string, orgName string, userId string) error {
+	userIdentification = userId
+	verbose = true
+	f.leaveNetwork(userId, networkId, orgName)
+
+	f.signConfig("config_update_in_envelope.pb")
+	f.signAndUpdateConfig("config_update_in_envelope.pb")
+
 	return nil
 }
 
@@ -366,6 +376,69 @@ func (f *FabricDefinition) createAnchorPeer(userID string, networkId string) (er
 	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "getinfo", "-c", "enablerchannel")
 
 }
+
+func (f *FabricDefinition) leaveNetwork(userID string, networkId string, orgName string) (err error) {
+	f.Logger.Printf("Fetching config block for channel")
+	networkDir := path.Join(constants.EnablerDir, userID, networkId)
+	volumeName := fmt.Sprintf("%s_fabric", networkId)
+	parentVolumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
+		"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3",
+		"peer", "channel", "fetch", "config", "/etc/enabler/config_block.pb", "-c", "enablerchannel")
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
+		"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3",
+		"configtxlator", "proto_decode", "--input", "/etc/enabler/config_block.pb", "--type", "common.Block", "--output", "/etc/enabler/config.json")
+
+	out, err := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 jq .data.data[0].payload.data.config /etc/enabler/config.json > %s/enabler/config1.json", f.Enabler.NetworkName, volumeName, networkDir)).Output()
+	if err != nil {
+		return err
+	}
+	out, err = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler -v %s/enabler/config1.json:/etc/enabler/config1.json hyperledger/fabric-tools:2.3 jq 'del(.channel_group.groups.Application.groups.%sMSP)' /etc/enabler/config1.json  > %s/enabler/modified_config.json ", f.Enabler.NetworkName, volumeName, networkDir, orgName, networkDir)).Output()
+	if err != nil {
+		return err
+	}
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s/enabler/config1.json:/etc/enabler/config1.json", networkDir), "hyperledger/fabric-tools:2.3",
+		"configtxlator", "proto_encode", "--input", "/etc/enabler/config1.json", "--type", "common.Config", "--output", "/etc/enabler/config1.pb")
+	// Required Step
+
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s/enabler/modified_config.json:/etc/enabler/modified_config.json", networkDir), "hyperledger/fabric-tools:2.3",
+		"configtxlator", "proto_encode", "--input", "/etc/enabler/modified_config.json", "--type", "common.Config", "--output", "/etc/enabler/modified_config.pb")
+	// Required Step
+
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3",
+		"configtxlator", "compute_update", "--channel_id", "enablerchannel", "--original", "/etc/enabler/config1.pb", "--updated", "/etc/enabler/modified_config.pb", "--output", "/etc/enabler/config_update.pb")
+	// Required Step
+	out, err = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxlator proto_decode --input /etc/enabler/config_update.pb --type common.ConfigUpdate | jq . > %s/enabler/config_update.json", f.Enabler.NetworkName, volumeName, networkDir)).Output()
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 echo '{\"payload\":{\"header\":{\"channel_header\":{\"channel_id\":\"enablerchannel\", \"type\":2}},\"data\":{\"config_update\":'$(cat /%s/enabler/config_update.json)'}}}'| jq . > %s/enabler/config_update_in_envelope.json", f.Enabler.NetworkName, volumeName, networkDir, networkDir))
+	fmt.Printf("%s", cmd.String())
+	out, err = cmd.Output()
+	if err != nil {
+		return err
+	}
+	fmt.Printf(" %s\n", out)
+
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s/enabler/config_update_in_envelope.json:/etc/enabler/config_update_in_envelope.json", networkDir), "hyperledger/fabric-tools:2.3",
+		"configtxlator", "proto_encode", "--input", "/etc/enabler/config_update_in_envelope.json", "--type", "common.Envelope", "--output", "/etc/enabler/config_update_in_envelope.pb")
+
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
+		"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3",
+		"peer", "channel", "signconfigtx", "-f", fmt.Sprintf("/etc/enabler/%s", "config_update_in_envelope.pb"), "--tls", "--cafile", "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem")
+
+	docker.CopyFromContainer(fmt.Sprintf("%s_fabric_peer", networkId), "/etc/enabler/config_update_in_envelope.pb", fmt.Sprintf("%s/enabler/config_update_in_envelope.pb", networkDir), verbose)
+	docker.CopyFileToVolume(parentVolumeName, fmt.Sprintf("%s/enabler/config_update_in_envelope.pb", networkDir), fmt.Sprintf("config_update_in_envelope.pb"), verbose)
+
+	return nil
+	// Now sign this transaction and update it.
+	// Before doing this need to copy the cafile from the orderer msp-> tlsca .pem to org3 accessible location
+	// Then only it would work.
+	// docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s/enabler/tlsca.example.com-cert.pem:/etc/enabler/tlsca.example.com-cert.pem", networkDir), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
+	// 	"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3",
+	// 	"peer", "channel", "update", "-f", "/etc/enabler/anchor_update_in_envelope.pb", "-c", "enablerchannel", "-o", "fabric_orderer:7050", "--tls", "--cafile", fmt.Sprintf("%s/tlsca.example.com-cert.pem", "/etc/enabler"))
+
+	// return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "getinfo", "-c", "enablerchannel")
+
+}
+
 func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string, orgName string) (err error) {
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
 	// Required Step
@@ -414,24 +487,34 @@ func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string
 	return nil
 }
 
-func (f *FabricDefinition) signConfig() error {
+func (f *FabricDefinition) signConfig(envelopeFile string) error {
 	f.Logger.Printf("Fetching config block for channel")
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
 		"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3",
-		"peer", "channel", "signconfigtx", "-f", "/etc/enabler/org3_update_in_envelope.pb", "--tls", "--cafile", "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem")
+		"peer", "channel", "signconfigtx", "-f", fmt.Sprintf("/etc/enabler/%s", envelopeFile), "--tls", "--cafile", "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem")
+
+	return nil
+}
+func (f *FabricDefinition) signByOrg3Config(envelopeFile string, networkName string) error {
+	f.Logger.Printf("Fetching config block for channel")
+	networkDir := path.Join(constants.EnablerDir, userIdentification, networkName)
+	volumeName := fmt.Sprintf("%s_fabric", networkName)
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
+		"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3",
+		"peer", "channel", "signconfigtx", "-f", fmt.Sprintf("/etc/enabler/%s", envelopeFile), "--tls", "--cafile", "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem")
 
 	return nil
 }
 
-func (f *FabricDefinition) signAndUpdateConfig() error {
+func (f *FabricDefinition) signAndUpdateConfig(envelopeFile string) error {
 	f.Logger.Printf("Fetching config block for channel")
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
 		"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3",
-		"peer", "channel", "update", "-f", "/etc/enabler/org3_update_in_envelope.pb", "-c", "enablerchannel", "-o", "fabric_orderer:7050", "--tls", "--cafile", "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem")
+		"peer", "channel", "update", "-f", fmt.Sprintf("/etc/enabler/%s", envelopeFile), "-c", "enablerchannel", "-o", "fabric_orderer:7050", "--tls", "--cafile", "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem")
 
 	return nil
 }
