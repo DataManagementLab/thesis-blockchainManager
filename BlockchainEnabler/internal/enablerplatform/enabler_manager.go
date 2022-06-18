@@ -42,7 +42,8 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	e.BlockchainProvider = initOptions.BlockchainType.String()
 	e.ExposedBlockchainPort = initOptions.ServicesPort
 	e.Members = make([]*types.Member, numberOfMembers)
-	e.NetworkName = fmt.Sprintf("%s_enabler_network_%s_%d", userId, e.BlockchainProvider, em.GetCurrentCount(e.BlockchainProvider))
+	// e.NetworkName = fmt.Sprintf("%s_enabler_network_%s_%d", userId, e.BlockchainProvider, em.GetCurrentCount(e.BlockchainProvider))
+	e.NetworkName = initOptions.NetworkName
 	em.logger.Printf("Initializing the members for the Network")
 	// Create members for each of the network ->
 	// This members will be the different components that are needed and connected with the core.
@@ -71,7 +72,7 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 
 	e.InterfaceProvider = em.getBlockchainProvider(e)
 	//  create a function which checks the ports and pass this function to the init.
-	if err := e.InterfaceProvider.Init(em.UserId); err != nil {
+	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume); err != nil {
 		return err
 	}
 	if err := em.writePlatformInfo(e); err != nil {
@@ -81,10 +82,10 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
-func (em *EnablerPlatformManager) CreateNetwork() {
+func (em *EnablerPlatformManager) CreateNetwork(useVolume bool) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, false)
+			network.InterfaceProvider.Create(em.UserId, false, useVolume)
 		}
 	}
 	// Things to do here
@@ -92,10 +93,10 @@ func (em *EnablerPlatformManager) CreateNetwork() {
 	// 1. calling the function for the blockchain network create.
 }
 
-func (em *EnablerPlatformManager) CreateNetworkUsingSDK() {
+func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, true)
+			network.InterfaceProvider.Create(em.UserId, true, false)
 		}
 	}
 }
@@ -172,9 +173,9 @@ func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, 
 func (em *EnablerPlatformManager) LeaveNetwork(networkId string, orgName string) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			
-				return network.InterfaceProvider.Leave(networkId, orgName, em.UserId)
-			
+
+			return network.InterfaceProvider.Leave(networkId, orgName, em.UserId)
+
 		}
 	}
 
@@ -192,8 +193,8 @@ func (em *EnablerPlatformManager) createMember(id string, index int, options *co
 		Index:            &index,
 		ExposedPort:      options.ServicesPort + index,
 		ExposedAdminPort: serviceBase + 1, // note shared blockchain node is on zero
-		OrgName:          fmt.Sprintf("%s_%s", em.UserId, options.OrgNames[index]),
-		NodeName:         fmt.Sprintf("%s_%s", em.UserId, options.NodeNames[index]),
+		OrgName:          fmt.Sprintf("%s", options.OrgNames[index]),
+		NodeName:         fmt.Sprintf("%s", options.NodeNames[index]),
 	}
 
 }

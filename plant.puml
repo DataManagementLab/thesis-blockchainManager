@@ -1,0 +1,303 @@
+@startuml
+namespace blockchain {
+    interface IProvider  {
+        + Init( string) error
+        + Create() error
+
+    }
+}
+
+
+namespace conf {
+    class InitializationOptions << (S,Aquamarine) >> {
+        + NumberOfMembers int
+        + UserId string
+        + ConfigurationFile string
+        + BlockchainType types.BlockchainProvider
+        + OrgNames []string
+        + NodeNames []string
+        + ServicesPort int
+
+    }
+}
+
+
+namespace deployer {
+    interface IDeployer  {
+        + GenerateFiles( *types.Network,  string) error
+
+    }
+}
+
+
+namespace docker {
+    class DockerComposeConfig << (S,Aquamarine) >> {
+        + Version string
+        + Services <font color=blue>map</font>[string]*Service
+        + Volumes <font color=blue>map</font>[string]<font color=blue>struct</font>{}
+
+    }
+    class HealthCheck << (S,Aquamarine) >> {
+        + Test []string
+        + Interval string
+        + Timeout string
+        + Retries int
+
+    }
+    class LoggingConfig << (S,Aquamarine) >> {
+        + Driver string
+        + Options <font color=blue>map</font>[string]string
+
+    }
+    class Service << (S,Aquamarine) >> {
+        + ContainerName string
+        + Image string
+        + Build string
+        + Command string
+        + Environment <font color=blue>map</font>[string]string
+        + Volumes []string
+        + Ports []string
+        + DependsOn <font color=blue>map</font>[string]<font color=blue>map</font>[string]string
+        + HealthCheck *HealthCheck
+        + Logging *LoggingConfig
+        + WorkingDir string
+        + EntryPoint []string
+        + EnvFile string
+        + Expose []int
+
+    }
+    class ServiceDefinition << (S,Aquamarine) >> {
+        + ServiceName string
+        + Service *Service
+        + VolumeNames []string
+
+    }
+}
+
+
+namespace enablerplatform {
+    class EnablerPlatformManager << (S,Aquamarine) >> {
+        - logger *zerolog.Logger
+
+        + UserId string
+        + Enablers []*types.Network
+        + Options *conf.InitializationOptions
+
+        - writePlatformInfo(enabler *types.Network) error
+        - ensureDirectories(s *types.Network) error
+        - getBlockchainProvider(enabler *types.Network) blockchain.IProvider
+
+        + InitEnablerPlatform(userId string, numberOfMembers int, initOptions *conf.InitializationOptions) error
+        + GetCurrentCount(s string) int
+
+    }
+}
+
+
+namespace fabric {
+    class BCCSP << (S,Aquamarine) >> {
+        + Security *BCCSPSecurity
+
+    }
+    class BCCSPSecurity << (S,Aquamarine) >> {
+        + Default *Provider
+        + Enabled bool
+        + HashAlgorithm string
+        + Level int
+        + SoftVerify bool
+
+    }
+    class CA << (S,Aquamarine) >> {
+        + Hostname string
+        + Country string
+        + Province string
+        + Locality string
+        + OrganizationalUnit string
+
+    }
+    class Channel << (S,Aquamarine) >> {
+        + Orderers []string
+        + Peers <font color=blue>map</font>[string]*ChannelPeer
+
+    }
+    class ChannelPeer << (S,Aquamarine) >> {
+        + ChaincodeQuery bool
+        + EndorsingPeer bool
+        + EventSource bool
+        + LedgerQuery bool
+
+    }
+    class Client << (S,Aquamarine) >> {
+        + BCCSP *BCCSP
+        + CredentialStore *CredentialStore
+        + CryptoConfig *Path
+        + Logging *Logging
+        + Organization string
+        + TLSCerts *TLSCerts
+
+    }
+    class CredentialStore << (S,Aquamarine) >> {
+        + CryptoStore *Path
+        + Path string
+
+    }
+    class CryptogenConfig << (S,Aquamarine) >> {
+        + OrdererOrgs []*Org
+        + PeerOrgs []*Org
+
+    }
+    class Fabric << (S,Aquamarine) >> {
+        - sdk *fabsdk.FabricSDK
+
+        + ChannelID string
+
+    }
+    class FabricDefinition << (S,Aquamarine) >> {
+        + Logger *zerolog.Logger
+        + Enabler *types.Network
+        + DeployerType string
+        + Deployer deployer.IDeployer
+
+        - writeConfigs(userId string) error
+        - generateGenesisBlock(userId string) error
+
+        + Init(userId string) error
+        + Create() error
+        + GetDockerServiceDefinitions() []*docker.ServiceDefinition
+
+    }
+    class FabricDocker << (S,Aquamarine) >> {
+        + Deploy()
+        + GenerateFiles(enabler *types.Network, userId string) error
+
+    }
+    class FabricNetworkConfig << (S,Aquamarine) >> {
+        + CertificateAuthorities <font color=blue>map</font>[string]*NetworkEntity
+        + Channels <font color=blue>map</font>[string]*Channel
+        + Client *Client
+        + Organization string
+        + Orderers <font color=blue>map</font>[string]*NetworkEntity
+        + Organizations <font color=blue>map</font>[string]*Organization
+        + Peers <font color=blue>map</font>[string]*NetworkEntity
+        + Version string
+
+    }
+    class FabricSetup << (S,Aquamarine) >> {
+        - initialized bool
+        - admin *resmgmt.Client
+        - sdk *fabsdk.FabricSDK
+
+        + ConfigFile string
+        + OrgID string
+        + OrdererID string
+        + ChannelID string
+        + ChainCodeID string
+        + ChannelConfig string
+        + ChaincodeGoPath string
+        + ChaincodePath string
+        + OrgAdmin string
+        + OrgName string
+        + UserName string
+
+        + Initialize() error
+        + CloseSDK()
+
+    }
+    class Logging << (S,Aquamarine) >> {
+        + Level string
+
+    }
+    class NetworkEntity << (S,Aquamarine) >> {
+        + TLSCACerts *Path
+        + URL string
+        + Registrar *Registrar
+
+    }
+    class Org << (S,Aquamarine) >> {
+        + Name string
+        + Domain string
+        + EnableNodeOUs bool
+        + Specs []*Spec
+        + CA *CA
+        + Template *Template
+        + Users *Users
+
+    }
+    class Organization << (S,Aquamarine) >> {
+        + CertificateAuthorities []string
+        + CryptoPath string
+        + MSPID string
+        + Peers []string
+
+    }
+    class Path << (S,Aquamarine) >> {
+        + Path string
+
+    }
+    class Provider << (S,Aquamarine) >> {
+        + Provider string
+
+    }
+    class Registrar << (S,Aquamarine) >> {
+        + EnrollID string
+        + EnrollSecret string
+
+    }
+    class Spec << (S,Aquamarine) >> {
+        + Hostname string
+
+    }
+    class TLSCerts << (S,Aquamarine) >> {
+        + Client *TLSCertsClient
+
+    }
+    class TLSCertsClient << (S,Aquamarine) >> {
+        + Cert *Path
+        + Key *Path
+
+    }
+    class Template << (S,Aquamarine) >> {
+        + Count int
+        + Hostname string
+
+    }
+    class Users << (S,Aquamarine) >> {
+        + Count int
+
+    }
+}
+
+"blockchain.IProvider" <|-- "fabric.FabricDefinition"
+"deployer.IDeployer" <|-- "fabric.FabricDocker"
+
+namespace types {
+    class BlockchainProvider << (S,Aquamarine) >> {
+        + String() string
+
+    }
+    class Network << (S,Aquamarine) >> {
+        + NetworkName string
+        + Members []*Member
+        + ExposedBlockchainPort int
+        + BlockchainProvider string
+        + InterfaceProvider blockchain.IProvider
+
+    }
+    class Member << (S,Aquamarine) >> {
+        + ID string
+        + Index *int
+        + Address string
+        + ExposedPort int
+        + ExposedAdminPort int
+        + ExternalPorts <font color=blue>interface</font>{}
+        + OrgName string
+        + NodeName string
+
+    }
+    class types.BlockchainProvider << (T, #FF7700) >>  {
+    }
+}
+
+
+"__builtin__.int" #.. "types.BlockchainProvider"
+@enduml

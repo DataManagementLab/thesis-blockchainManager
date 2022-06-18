@@ -11,7 +11,9 @@ type InitializationOptions struct {
 	UserId            string
 	ConfigurationFile string
 	BlockchainType    types.BlockchainProvider
+	NetworkName       string
 	OrgNames          []string
 	NodeNames         []string
-	ServicesPort      int //only if the user specifies a specific services port he wants to utilize.
+	ServicesPort      int
+	UseVolume         bool //only if the user specifies a specific services port he wants to utilize.
 }

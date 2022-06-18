@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 	"syscall"
 	"time"
 
@@ -43,7 +44,7 @@ var configtxYaml string
 var userIdentification string
 var verbose bool
 
-func (f *FabricDefinition) Init(userId string) (err error) {
+func (f *FabricDefinition) Init(userId string, useVolume bool) (err error) {
 
 	//Steps to follow:
 	// Basic step to fetch the deployer instance.
@@ -62,10 +63,10 @@ func (f *FabricDefinition) Init(userId string) (err error) {
 	// once this is done then need to call the deployer init.
 	// call the deployer file generation.
 	f.setValidPorts()
-	if err := f.Deployer.GenerateFiles(f.Enabler, userId); err != nil {
+	if err := f.Deployer.GenerateFiles(f.Enabler, userId, useVolume); err != nil {
 		return err
 	}
-	if err := f.writeConfigs(userId); err != nil {
+	if err := f.writeConfigs(userId, f.Enabler.Members[0]); err != nil {
 		return err
 	}
 	// Need to call the deployer-> which can be anything from kubernetes to docker -> depending on the user choice.
@@ -93,7 +94,7 @@ func writeConfigtxYaml(blockchainPath string) error {
 
 // The port checker functionality can be implemented in the enabler_manager and then it is passed as a function here too, as the fabric would have an implementation for
 // the ports it wishes to utilize.
-func (f *FabricDefinition) writeConfigs(userId string) (err error) {
+func (f *FabricDefinition) writeConfigs(userId string, net *types.Member) (err error) {
 
 	// Steps to be handled here
 	// 1. Create cryptogen config file
@@ -105,11 +106,11 @@ func (f *FabricDefinition) writeConfigs(userId string) (err error) {
 
 	// also need to add certain ports and check for certain ports from the member.
 
-	if err := WriteCryptogenConfig(1, cryptogenYamlPath); err != nil {
+	if err := WriteCryptogenConfig(1, cryptogenYamlPath, net.OrgName); err != nil {
 		return err
 	}
 
-	if err := WriteNetworkConfig(path.Join(blockchainDirectory, "ccp.yaml"), path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")); err != nil {
+	if err := WriteNetworkConfig(path.Join(blockchainDirectory, "ccp.yaml"), path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler"), *net); err != nil {
 		return err
 	}
 	if err := writeConfigtxYaml(blockchainDirectory); err != nil {
@@ -185,7 +186,7 @@ func getDeployerInstance(deployerType string) (deployer deployer.IDeployer) {
 	return GetFabricDockerInstance()
 }
 
-func (f *FabricDefinition) Create(userId string, useSDK bool) (err error) {
+func (f *FabricDefinition) Create(userId string, useSDK bool, useVolume bool) (err error) {
 	// Step to do inside the create function
 
 	// 1.Also need to check if the docker is present in the host machine.
@@ -193,8 +194,13 @@ func (f *FabricDefinition) Create(userId string, useSDK bool) (err error) {
 	verbose = true
 	f.Deployer = getDeployerInstance(f.DeployerType)
 	userIdentification = userId
-	f.generateCryptoMaterial(userId, useSDK)
-	f.generateGenesisBlock(userId, useSDK)
+	if useVolume{
+		fmt.Sprintln("Use volume")
+	}else{
+		fmt.Sprintln("Donot use the volume")
+	}
+	f.generateCryptoMaterial(userId, useVolume)
+	f.generateGenesisBlock(userId, useVolume)
 	workingDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
 	fmt.Printf("Working directory %s", workingDir)
 
@@ -202,16 +208,16 @@ func (f *FabricDefinition) Create(userId string, useSDK bool) (err error) {
 		return err
 	}
 
-	fmt.Printf("The value of sdk inside the fabric.go%v", useSDK)
+	fmt.Printf("The value of sdk inside the fabric.go%v", useVolume)
 	// time.Sleep(2 * time.Second)
 	if useSDK {
-
+		// f.createChannel(userId, useSDK)
 		f.fetchNetworkConfigFile(userId)
 
 	} else {
-		f.createChannel(userId)
-		f.joinChannel(userId)
-		f.getBlockInformation(userId)
+		f.createChannel(userId, useVolume)
+		f.joinChannel(userId, useVolume)
+		f.getBlockInformation(userId, useVolume)
 		// Fetching the ccp file.
 
 		//Use this section to define network using the SDK.
@@ -327,7 +333,7 @@ func (f *FabricDefinition) fetchConfigBlock(userId string) (err error) {
 }
 
 func (f *FabricDefinition) createAnchorPeer(userID string, networkId string) (err error) {
-	f.Logger.Printf("Fetching config block for channel")
+	f.Logger.Printf("Creating anchor peers block for channel")
 	networkDir := path.Join(constants.EnablerDir, userID, networkId)
 	volumeName := fmt.Sprintf("%s_fabric", networkId)
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
@@ -378,7 +384,7 @@ func (f *FabricDefinition) createAnchorPeer(userID string, networkId string) (er
 }
 
 func (f *FabricDefinition) leaveNetwork(userID string, networkId string, orgName string) (err error) {
-	f.Logger.Printf("Fetching config block for channel")
+	f.Logger.Printf("Leaving the network")
 	networkDir := path.Join(constants.EnablerDir, userID, networkId)
 	volumeName := fmt.Sprintf("%s_fabric", networkId)
 	parentVolumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
@@ -488,7 +494,7 @@ func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string
 }
 
 func (f *FabricDefinition) signConfig(envelopeFile string) error {
-	f.Logger.Printf("Fetching config block for channel")
+	f.Logger.Printf("Signing the config block for channel")
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
@@ -498,7 +504,7 @@ func (f *FabricDefinition) signConfig(envelopeFile string) error {
 	return nil
 }
 func (f *FabricDefinition) signByOrg3Config(envelopeFile string, networkName string) error {
-	f.Logger.Printf("Fetching config block for channel")
+	f.Logger.Printf("Signing the config block for channel")
 	networkDir := path.Join(constants.EnablerDir, userIdentification, networkName)
 	volumeName := fmt.Sprintf("%s_fabric", networkName)
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
@@ -509,7 +515,7 @@ func (f *FabricDefinition) signByOrg3Config(envelopeFile string, networkName str
 }
 
 func (f *FabricDefinition) signAndUpdateConfig(envelopeFile string) error {
-	f.Logger.Printf("Fetching config block for channel")
+	f.Logger.Printf("Sign and Update config block for channel")
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
@@ -520,7 +526,7 @@ func (f *FabricDefinition) signAndUpdateConfig(envelopeFile string) error {
 }
 
 func (f *FabricDefinition) fetchChannelGenesisBlock() error {
-	f.Logger.Printf("Fetching config block for channel")
+	f.Logger.Printf("Fetching channel genesis block for channel")
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
 
@@ -595,7 +601,7 @@ func createNewContext(configProvider core.ConfigProvider, blockchainDirectoryPat
 		SigningIdentities: []msp.SigningIdentity{adminId},
 	}
 
-	txnId, err := resclient.SaveChannel(saveChannelRequest, resmgmt.WithOrdererEndpoint("fabric_orderer.example.com"))
+	txnId, err := resclient.SaveChannel(saveChannelRequest, resmgmt.WithOrdererEndpoint("fabric_orderer"))
 
 	if err != nil || txnId.TransactionID == "" {
 		return errors.WithMessage(err, "failed to save channel")
@@ -612,7 +618,7 @@ func createNewContext(configProvider core.ConfigProvider, blockchainDirectoryPat
 }
 
 // setting up the docker container and the volume and running the cryptogen configs
-func (f *FabricDefinition) generateCryptoMaterial(userId string, useSDK bool) (err error) {
+func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool) (err error) {
 	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "blockchain")
 	enablerPath := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
 	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
@@ -625,7 +631,7 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useSDK bool) (e
 	}
 	f.Logger.Printf("Using the fabric tools to generate the msp with cryptogen tool in the shared volume location")
 	// Run cryptogen to generate MSP
-	if useSDK {
+	if !useVolume {
 		if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/template.yml", cryptogenYamlPath), "-v", fmt.Sprintf("%s:/etc/enabler", enablerPath), "hyperledger/fabric-tools:2.3", "cryptogen", "generate", "--config", "/etc/template.yml", "--output", "/etc/enabler/organizations"); err != nil {
 			return err
 		}
@@ -638,7 +644,7 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useSDK bool) (e
 	return nil
 }
 
-func (f *FabricDefinition) generateGenesisBlock(userId string, useSDK bool) (err error) {
+func (f *FabricDefinition) generateGenesisBlock(userId string, useVolume bool) (err error) {
 	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "blockchain")
 	enablerDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
@@ -647,7 +653,7 @@ func (f *FabricDefinition) generateGenesisBlock(userId string, useSDK bool) (err
 	// Generate genesis block
 	// might also need to generate the configtx yaml file according the orgname and even the name as example.com does not seem quite good enough
 	fmt.Printf("Location of the configtx file %s", path.Join(blockchainDirectory, "configtx.yaml"))
-	if useSDK {
+	if !useVolume {
 		if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", enablerDirectory), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(blockchainDirectory, "configtx.yaml")), "hyperledger/fabric-tools:2.3", "configtxgen", "-outputBlock", "/etc/enabler/enabler.block", "-profile", "SingleOrgApplicationGenesis", "-channelID", "enablerchannel"); err != nil {
 			//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
 			return err
@@ -661,25 +667,59 @@ func (f *FabricDefinition) generateGenesisBlock(userId string, useSDK bool) (err
 			//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
 			return err
 		}
+		// if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(blockchainDirectory, "configtx.yaml")), "hyperledger/fabric-tools:2.3", "configtxgen", "-outputCreateChannelTx", "/etc/enabler/enabler.tx", "-profile", "Channel1", "-channelID", "enablerchannel"); err != nil {
+		// 	//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
+		// 	return err
+		// }
+		// if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(blockchainDirectory, "configtx.yaml")), "hyperledger/fabric-tools:2.3", "configtxgen", "-outputAnchorPeersUpdate", "/etc/enabler/Org1MSPanchors.tx", "-profile", "Channel1", "-channelID", "enablerchannel", "-asOrg", "Org1MSP"); err != nil {
+		// 	//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
+		// 	return err
+		// }
+		// docker.CopyFromContainer(fmt.Sprintf("%s_fabric_orderer", f.Enabler.NetworkName), "/etc/enabler/genesis.block", fmt.Sprintf("%s/genesis.block", enablerDirectory), verbose)
+
+		// if err := docker.CreateNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true); err != nil {
+		// 	//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
+		// 	return err
+		// }
 	}
 
 	return nil
 }
 
-func (f *FabricDefinition) createChannel(userId string) (err error) {
+func (f *FabricDefinition) createChannel(userId string, useVolume bool) (err error) {
 	verbose := true
 	f.Logger.Printf("Creating channel")
 	networkDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
+	enablerDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
-	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "osnadmin", "channel", "join", "--channelID", "enablerchannel", "--config-block", "/etc/enabler/enabler.block", "-o", "fabric_orderer:7053", "--ca-file", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/ca.crt", "--client-cert", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/client.crt", "--client-key", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/client.key")
+	if !useVolume {
+		return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", enablerDirectory), "hyperledger/fabric-tools:2.3", "osnadmin", "channel", "join", "--channelID", "enablerchannel", "--config-block", "/etc/enabler/enabler.block", "-o", "fabric_orderer:7053", "--ca-file", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/ca.crt", "--client-cert", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/client.crt", "--client-key", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/client.key")
+
+	} else {
+		return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "osnadmin", "channel", "join", "--channelID", "enablerchannel", "--config-block", "/etc/enabler/enabler.block", "-o", "fabric_orderer:7053", "--ca-file", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/ca.crt", "--client-cert", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/client.crt", "--client-key", "/etc/enabler/organizations/ordererOrganizations/example.com/users/Admin@example.com/tls/client.key")
+
+	}
+	// volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
+	// docker.CopyFromContainer(fmt.Sprintf("fabric_orderer"), "/etc/enabler/genesis.block", fmt.Sprintf("%s/enabler/genesis.block", networkDir), verbose)
+
+	// return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", enablerDirectory), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "blockchain"), "configtx.yaml")), "-e", "CORE_PEER_ADDRESS=peer0.org1.example.com:7051","-e","SYS_CHANNEL=channel1", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "create", "-c", "channel1", "-f", "/etc/enabler/enabler.tx", "-o", fmt.Sprintf("fabric_orderer:7050"), "--tls", "--cafile", "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem")
+
 }
 
-func (f *FabricDefinition) joinChannel(userId string) error {
+func (f *FabricDefinition) joinChannel(userId string, useVolume bool) error {
 	verbose := true
 	f.Logger.Printf("Joining channel")
 	networkDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
-	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "join", "-b", "/etc/enabler/enabler.block")
+	orgDomain := fmt.Sprintf("%s.example.com", strings.ToLower(f.Enabler.Members[0].OrgName))
+	enablerDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
+	peerID := fmt.Sprintf("%s.%s", f.Enabler.Members[0].NodeName, orgDomain)
+	if useVolume {
+		return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e", fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", f.Enabler.Members[0].OrgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3", "peer", "channel", "join", "-b", "/etc/enabler/enabler.block")
+	} else {
+		return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", enablerDirectory), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e", fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", f.Enabler.Members[0].OrgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3", "peer", "channel", "join", "-b", "/etc/enabler/enabler.block")
+	}
+
 }
 
 func (f *FabricDefinition) joinOtherOrgPeerToChannel(userId string, networkId string) error {
@@ -687,16 +727,23 @@ func (f *FabricDefinition) joinOtherOrgPeerToChannel(userId string, networkId st
 	f.Logger.Printf("Joining channel")
 	networkDir := path.Join(constants.EnablerDir, userId, networkId)
 	volumeName := fmt.Sprintf("%s_fabric", networkId)
-	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "join", "-b", "/etc/enabler/channel_genesis_block.block")
-	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "getinfo", "-c", "enablerchannel")
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=peer0.org1.example.com:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "join", "-b", "/etc/enabler/channel_genesis_block.block")
+	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=peer0.org1.example.com:7151", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "getinfo", "-c", "enablerchannel")
 }
 
-func (f *FabricDefinition) getBlockInformation(userId string) error {
+func (f *FabricDefinition) getBlockInformation(userId string, useVolume bool) error {
 	verbose := true
 	f.Logger.Printf("Get block information")
+	enablerDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
 	networkDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
-	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "configtxlator", "proto_decode", "--input", "/etc/enabler/enabler.block", "--output", "/etc/enabler/enabler.json", "--type", "common.Block")
+	if useVolume {
+		return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "configtxlator", "proto_decode", "--input", "/etc/enabler/enabler.block", "--output", "/etc/enabler/enabler.json", "--type", "common.Block")
+
+	} else {
+		return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", enablerDirectory), "hyperledger/fabric-tools:2.3", "configtxlator", "proto_decode", "--input", "/etc/enabler/enabler.block", "--output", "/etc/enabler/enabler.json", "--type", "common.Block")
+
+	}
 
 }
 

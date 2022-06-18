@@ -1,0 +1,109 @@
+@startuml
+namespace blockchain {
+    interface IProvider  {
+        + Init( string) error
+        + Create() error
+
+    }
+}
+
+
+namespace conf {
+    class InitializationOptions << (S,Aquamarine) >> {
+        + NumberOfMembers int
+        + UserId string
+        + ConfigurationFile string
+        + BlockchainType types.BlockchainProvider
+        + OrgNames []string
+        + NodeNames []string
+        + ServicesPort int
+
+    }
+}
+
+
+namespace deployer {
+    interface IDeployer  {
+        + GenerateFiles( *types.Network,  string) error
+
+    }
+}
+
+
+namespace docker {
+    class DockerComposeConfig << (S,Aquamarine) >> {
+        + Version string
+        + Services <font color=blue>map</font>[string]*Service
+        + Volumes <font color=blue>map</font>[string]<font color=blue>struct</font>{}
+
+    }
+
+}
+
+
+namespace enablerplatform {
+    class EnablerPlatformManager << (S,Aquamarine) >> {
+        - logger *zerolog.Logger
+
+        + UserId string
+        + Enablers []*types.Network
+        + Options *conf.InitializationOptions
+
+        - writePlatformInfo(enabler *types.Network) error
+        - ensureDirectories(s *types.Network) error
+        - getBlockchainProvider(enabler *types.Network) blockchain.IProvider
+
+        + InitEnablerPlatform(userId string, numberOfMembers int, initOptions *conf.InitializationOptions) error
+        + GetCurrentCount(s string) int
+
+    }
+}
+
+
+namespace fabric {
+   
+    class FabricDefinition << (S,Aquamarine) >> {
+        + Logger *zerolog.Logger
+        + Enabler *types.Network
+        + DeployerType string
+        + Deployer deployer.IDeployer
+
+        - writeConfigs(userId string) error
+        - generateGenesisBlock(userId string) error
+
+        + Init(userId string) error
+        + Create() error
+        + GetDockerServiceDefinitions() []*docker.ServiceDefinition
+
+    }
+    class FabricDocker << (S,Aquamarine) >> {
+        + Deploy()
+        + GenerateFiles(enabler *types.Network, userId string) error
+
+    }
+  
+}
+
+"blockchain.IProvider" <|-- "fabric.FabricDefinition"
+"deployer.IDeployer" <|-- "fabric.FabricDocker"
+
+namespace types {
+    class BlockchainProvider << (S,Aquamarine) >> {
+        + String() string
+
+    }
+    class Network << (S,Aquamarine) >> {
+        + NetworkName string
+        + Members []*Member
+        + ExposedBlockchainPort int
+        + BlockchainProvider string
+        + InterfaceProvider blockchain.IProvider
+
+    }
+    class types.BlockchainProvider << (T, #FF7700) >>  {
+    }
+}
+
+
+"__builtin__.int" #.. "types.BlockchainProvider"
+@enduml

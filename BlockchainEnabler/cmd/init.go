@@ -31,7 +31,8 @@ var initOptions conf.InitializationOptions
 
 var confFile bool
 var selectedBlockchain string
-var channelName string
+var networkID string
+var organizationName string
 
 var promptNames bool
 var platformManager *enablerplatform.EnablerPlatformManager
@@ -78,13 +79,15 @@ var initCmd = &cobra.Command{
 		initOptions.UserId = userId
 		initOptions.OrgNames = make([]string, 0, memberCount)
 		initOptions.NodeNames = make([]string, 0, memberCount)
-
+		initOptions.NetworkName = networkID
+		initOptions.UseVolume = useVolume
+		initOptions.OrgNames = append(initOptions.OrgNames, organizationName)
 		if promptNames {
 
 		} else {
 			for i := 0; i < memberCount; i++ {
-				initOptions.OrgNames = append(initOptions.OrgNames, fmt.Sprintf("org_%d", i))
-				initOptions.NodeNames = append(initOptions.NodeNames, fmt.Sprintf("node_%d", i))
+
+				initOptions.NodeNames = append(initOptions.NodeNames, fmt.Sprintf("peer%d", i))
 			}
 		}
 		initOptions.BlockchainType, _ = types.BlockchainProviderSelection(selectedBlockchain)
@@ -133,8 +136,8 @@ func init() {
 	initCmd.Flags().StringVarP(&selectedBlockchain, "blockchain", "b", "fabric", fmt.Sprintf("Provide the Blockchain you would like to use options are %v", types.BlockchainProvidersList))
 	initCmd.Flags().BoolVar(&promptNames, "prompt-names", false, "Prompt for org and node names")
 	// initCmd.Flags().BoolVarP(&confFile, "conf", "f", false, "Configuration file")
-	// initCmd.Flags().StringVarP(&channelName, "channel","c","mychannel","Provide the name for the channel.")
-
+	initCmd.Flags().StringVarP(&networkID, "networkID", "n", "kinshuk_network1", "Provide the name for the network.")
+	initCmd.Flags().StringVarP(&organizationName, "orgName", "o", "Org1", "Provide the name for the organization default value org1.")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

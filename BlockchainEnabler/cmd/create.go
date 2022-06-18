@@ -51,9 +51,9 @@ var createCmd = &cobra.Command{
 		logger.Printf(createPlatformManager.UserId)
 		fmt.Printf("The value of sdk is %v", useSDK)
 		if useSDK {
-			createPlatformManager.CreateNetworkUsingSDK()
+			createPlatformManager.CreateNetworkUsingSDK(useVolume)
 		} else {
-			createPlatformManager.CreateNetwork()
+			createPlatformManager.CreateNetwork(useVolume)
 		}
 
 		// one more thing to consider is to before running the network actually checking if the ports are available or not and then if not then changing the ports and
@@ -71,6 +71,7 @@ func init() {
 	createCmd.Flags().StringVarP(&userId, "userId", "u", "", "Provide the user Id for the network you want to run.")
 	createCmd.Flags().StringVarP(&networkId, "netid", "n", "", "Provide the network id of the network you want to run.")
 	createCmd.Flags().BoolVarP(&useSDK, "useSDK", "s", false, "Function to enable or disable the use of SDK default: true")
+
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
