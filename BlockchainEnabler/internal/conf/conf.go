@@ -14,6 +14,6 @@ type InitializationOptions struct {
 	NetworkName       string
 	OrgNames          []string
 	NodeNames         []string
-	ServicesPort      int
-	UseVolume         bool //only if the user specifies a specific services port he wants to utilize.
+	ServicesPort      int //only if the user specifies a specific services port he wants to utilize.
+	UseVolume         bool
 }

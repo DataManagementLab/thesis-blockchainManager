@@ -157,11 +157,12 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, networkId2 string, joiningOrgName string) error {
+func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, networkId2 string, joiningOrgName string, useVolume bool,preparationPhase bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 			if network.NetworkName == networkId2 {
-				return network.InterfaceProvider.Join(networkId, orgName, networkId2, joiningOrgName, em.UserId)
+				// fmt.Println("Vlau of use volume", em.Options.UseVolume)
+				return network.InterfaceProvider.Join(networkId, orgName, networkId2, joiningOrgName, em.UserId, useVolume,preparationPhase)
 			}
 		}
 	}
