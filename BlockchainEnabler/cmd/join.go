@@ -27,7 +27,7 @@ var orgName string
 var joiningOrgName string
 var networkId1 string
 var networkId2 string
-var preparation bool
+var finalize bool
 // var finalize bool
 
 // joinCmd represents the join command
@@ -57,7 +57,8 @@ to quickly create a Cobra application.`,
 		// joinPlatformManager.Options.UseVolume = useVolume
 
 		logger.Printf(joinPlatformManager.UserId)
-		joinPlatformManager.JoinNetwork(networkId1, orgName, networkId2, joiningOrgName, useVolume,preparation)
+		fmt.Println("Value for prepareation ",finalize)
+		joinPlatformManager.JoinNetwork(networkId1, orgName, networkId2, joiningOrgName, useVolume,finalize)
 
 	},
 }
@@ -74,7 +75,7 @@ func init() {
 
 	joinCmd.Flags().StringVarP(&joiningOrgName, "orgname2", "j", "", "The organization name whose network is to be joined.")
 
-	joinCmd.Flags().BoolVarP(&preparation, "preparation", "p", true, "Function to tell which phase it is as join is divided into two phases preparation and finalize. It runs on behalf of the adding network.")
+	joinCmd.Flags().BoolVarP(&finalize, "finalize", "f", false, "Function to tell which phase it is as join is divided into two phases preparation and finalize. It runs on behalf of the adding network.")
 	// joinCmd.Flags().BoolVarP(&finalize, "finalize", "f", false, "This phase runs on the behalf of the joining network.")
 
 	// joinPlatformManager = enablerplatform.GetInstance(&logger)
