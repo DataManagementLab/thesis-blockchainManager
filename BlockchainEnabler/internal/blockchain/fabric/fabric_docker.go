@@ -18,7 +18,7 @@ type FabricDocker struct{}
 
 // either need to handle the ports issue here as the enabler_external port takes an interaface, it would also be easy to just assign the ports here.
 
-func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume bool, userID string) ([]*docker.ServiceDefinition, error) {
+func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume bool, userID string, basicSetup bool) ([]*docker.ServiceDefinition, error) {
 	external, ok := member.ExternalPorts.(map[string]int)
 
 	var fileDirectory string
@@ -160,6 +160,52 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 			VolumeNames: []string{fmt.Sprintf("%s", peerID)},
 		},
 	}
+	serviceDefinitionsBasicSetup := []*docker.ServiceDefinition{
+		{
+			ServiceName: fmt.Sprintf("%s", peerID),
+			Service: &docker.Service{
+				Image:         "hyperledger/fabric-peer:2.3",
+				ContainerName: fmt.Sprintf(peerID),
+				Command:       "peer node start",
+				Environment: map[string]string{
+					"CORE_VM_ENDPOINT":                      "unix:///host/var/run/docker.sock",
+					"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE": fmt.Sprintf("%s_default", memberId),
+					"FABRIC_LOGGING_SPEC":                   "INFO",
+					"CORE_PEER_TLS_ENABLED":                 "true",
+					"CORE_PEER_PROFILE_ENABLED":             "false",
+					"CORE_PEER_MSPCONFIGPATH":               fmt.Sprintf("/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain),
+					"CORE_PEER_TLS_CERT_FILE":               fmt.Sprintf("/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/server.crt", orgDomain, peerID),
+					"CORE_PEER_TLS_KEY_FILE":                fmt.Sprintf("/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/server.key", orgDomain, peerID),
+					"CORE_PEER_TLS_ROOTCERT_FILE":           fmt.Sprintf("/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID),
+					"CORE_PEER_ID":                          fmt.Sprintf("%s", peerID),
+					"CORE_PEER_ADDRESS":                     fmt.Sprintf("%s:%d", peerID, external["core_peer_listen_address_gossip_port"]),
+					"CORE_PEER_LISTENADDRESS":               fmt.Sprintf("0.0.0.0:%d", external["core_peer_listen_address_gossip_port"]),
+					"CORE_PEER_CHAINCODEADDRESS":            fmt.Sprintf("%s:%d", peerID, external["core_peer_chaincode_listen_port"]),
+					"CORE_PEER_CHAINCODELISTENADDRESS":      fmt.Sprintf("0.0.0.0:%d", external["core_peer_chaincode_listen_port"]),
+					"CORE_PEER_GOSSIP_BOOTSTRAP":            fmt.Sprintf("%s:%d", peerID, external["core_peer_listen_address_gossip_port"]),
+					"CORE_PEER_GOSSIP_EXTERNALENDPOINT":     fmt.Sprintf("%s:%d", peerID, external["core_peer_listen_address_gossip_port"]),
+					"CORE_PEER_LOCALMSPID":                  fmt.Sprintf("%sMSP", member.OrgName),
+					"CORE_OPERATIONS_LISTENADDRESS":         fmt.Sprintf("0.0.0.0:%d", external["core_operations_listen_port"]),
+				},
+				Volumes: []string{
+					fileDirectory,
+					fmt.Sprintf("%s:/var/hyperledger/production", peerID),
+					"/var/run/docker.sock:/host/var/run/docker.sock",
+				},
+				Ports: []string{
+					fmt.Sprintf("%d:%d", external["core_peer_listen_address_gossip_port"], external["core_peer_listen_address_gossip_port"]),
+					fmt.Sprintf("%d:%d", external["core_operations_listen_port"], external["core_operations_listen_port"]),
+				},
+				DockerNetworkNames: []string{
+					"byfn",
+				},
+			},
+			VolumeNames: []string{fmt.Sprintf("%s", peerID)},
+		},
+	}
+	if basicSetup {
+		return serviceDefinitionsBasicSetup, nil
+	}
 	return serviceDefinitions, nil
 }
 
@@ -174,7 +220,7 @@ func (fabDocker *FabricDocker) Deploy(workingDir string) error {
 	return nil
 }
 
-func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId string, useVolume bool) (err error) {
+func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId string, useVolume bool, basicSetup bool) (err error) {
 	fmt.Printf("The value of the user id %s", userId)
 	// dockerNetwor := docker.DockerNetwork {
 	// 	DockerNetName: },
@@ -193,7 +239,7 @@ func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId stri
 
 	compose := docker.CreateDockerCompose()
 	for _, member := range enabler.Members {
-		serviceDefinition, err := GenerateServiceDefinitions(member, fmt.Sprintf("%s", enabler.NetworkName), useVolume, userId)
+		serviceDefinition, err := GenerateServiceDefinitions(member, fmt.Sprintf("%s", enabler.NetworkName), useVolume, userId, basicSetup)
 		if err != nil {
 			return err
 		}

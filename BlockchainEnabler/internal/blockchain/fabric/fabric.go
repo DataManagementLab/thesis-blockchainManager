@@ -42,10 +42,13 @@ var fab *FabricDefinition
 
 //go:embed configtx.yaml
 var configtxYaml string
+
+//go:embed configtx-basicsetup.yaml
+var configtxBasicSetupYaml string
 var userIdentification string
 var verbose bool
 
-func (f *FabricDefinition) Init(userId string, useVolume bool) (err error) {
+func (f *FabricDefinition) Init(userId string, useVolume bool, basicSetup bool) (err error) {
 
 	//Steps to follow:
 	// Basic step to fetch the deployer instance.
@@ -64,10 +67,10 @@ func (f *FabricDefinition) Init(userId string, useVolume bool) (err error) {
 	// once this is done then need to call the deployer init.
 	// call the deployer file generation.
 	f.setValidPorts()
-	if err := f.Deployer.GenerateFiles(f.Enabler, userId, useVolume); err != nil {
+	if err := f.Deployer.GenerateFiles(f.Enabler, userId, useVolume, basicSetup); err != nil {
 		return err
 	}
-	if err := f.writeConfigs(userId, f.Enabler.Members[0]); err != nil {
+	if err := f.writeConfigs(userId, f.Enabler.Members[0], basicSetup); err != nil {
 		return err
 	}
 	// Need to call the deployer-> which can be anything from kubernetes to docker -> depending on the user choice.
@@ -87,15 +90,18 @@ func GetFabricInstance(logger *zerolog.Logger, enabler *types.Network, deployerT
 	}
 }
 
-func writeConfigtxYaml(blockchainPath string) error {
+func writeConfigtxYaml(blockchainPath string, basicSetup bool) error {
 
 	filePath := path.Join(blockchainPath, "configtx.yaml")
+	if basicSetup {
+		return ioutil.WriteFile(filePath, []byte(configtxBasicSetupYaml), 0755)
+	}
 	return ioutil.WriteFile(filePath, []byte(configtxYaml), 0755)
 }
 
 // The port checker functionality can be implemented in the enabler_manager and then it is passed as a function here too, as the fabric would have an implementation for
 // the ports it wishes to utilize.
-func (f *FabricDefinition) writeConfigs(userId string, net *types.Member) (err error) {
+func (f *FabricDefinition) writeConfigs(userId string, net *types.Member, basicSetup bool) (err error) {
 
 	// Steps to be handled here
 	// 1. Create cryptogen config file
@@ -107,14 +113,14 @@ func (f *FabricDefinition) writeConfigs(userId string, net *types.Member) (err e
 
 	// also need to add certain ports and check for certain ports from the member.
 
-	if err := WriteCryptogenConfig(1, cryptogenYamlPath, net.OrgName); err != nil {
+	if err := WriteCryptogenConfig(1, cryptogenYamlPath, net.OrgName, basicSetup); err != nil {
 		return err
 	}
 
 	if err := WriteNetworkConfig(path.Join(blockchainDirectory, "ccp.yaml"), path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler"), *net); err != nil {
 		return err
 	}
-	if err := writeConfigtxYaml(blockchainDirectory); err != nil {
+	if err := writeConfigtxYaml(blockchainDirectory, basicSetup); err != nil {
 		return err
 	}
 
@@ -303,16 +309,23 @@ func (f *FabricDefinition) createOrganizationForJoin(userId string, networkId st
 	volumeName := fmt.Sprintf("%s_fabric", networkId)
 	enablerPath := path.Join(constants.EnablerDir, userId, networkId, "enabler")
 	f.Logger.Printf("Generating the volume with volume name: %s", volumeName)
-	if err := docker.CreateVolume(volumeName, verbose); err != nil {
-		return err
+	var storageType string
+	if f.UseVolume {
+		storageType = volumeName
+		if err := docker.CreateVolume(volumeName, verbose); err != nil {
+			return err
+		}
+	} else {
+		storageType = enablerPath
 	}
+
 	f.Logger.Printf("Using the fabric tools to generate the msp with cryptogen tool in the shared volume location")
 	// Run cryptogen to generate MSP
-	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler/template.yaml", cryptogenYamlPath), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "cryptogen", "generate", "--config", "/etc/enabler/template.yaml", "--output", "/etc/enabler/organizations"); err != nil {
+	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler/template.yaml", cryptogenYamlPath), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "hyperledger/fabric-tools:2.3", "cryptogen", "generate", "--config", "/etc/enabler/template.yaml", "--output", "/etc/enabler/organizations"); err != nil {
 		return err
 	}
 	// Running the configtxgen command to get the org3 definition and store it in the current folder.
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm -v %s:/etc/hyperledger/fabric/configtx.yaml -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxgen --printOrg %sMSP > %s/%s.json", configtxPath, volumeName, orgName, enablerPath, orgName))
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm -v %s:/etc/hyperledger/fabric/configtx.yaml -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxgen --printOrg %sMSP > %s/%s.json", configtxPath, storageType, orgName, enablerPath, orgName))
 
 	fmt.Printf(" %s\n", cmd)
 	out, err := cmd.Output()
@@ -629,10 +642,28 @@ func (f *FabricDefinition) fetchChannelGenesisBlock() error {
 }
 func (f *FabricDefinition) loadGenesisFileToOrg(networkId string) error {
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
-	volumeName := fmt.Sprintf("%s_fabric", networkId)
-	// enablerPath := path.Join(constants.EnablerDir, userIdentification, networkId, "enabler")
+	enablerPath := path.Join(constants.EnablerDir, userIdentification, networkId, "enabler")
+	destinationFile := path.Join(enablerPath, "channel_genesis_block.block")
+	if f.UseVolume {
+		volumeName := fmt.Sprintf("%s_fabric", networkId)
+		// enablerPath := path.Join(constants.EnablerDir, userIdentification, networkId, "enabler")
 
-	docker.CopyFileToVolume(volumeName, fmt.Sprintf("%s/enabler/channel_genesis_block.block", networkDir), fmt.Sprintf("channel_genesis_block.block"), verbose)
+		docker.CopyFileToVolume(volumeName, fmt.Sprintf("%s/enabler/channel_genesis_block.block", networkDir), fmt.Sprintf("channel_genesis_block.block"), verbose)
+
+	} else {
+		input, err := ioutil.ReadFile(fmt.Sprintf("%s/enabler/channel_genesis_block.block", networkDir))
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		err = ioutil.WriteFile(destinationFile, input, 0644)
+		if err != nil {
+			fmt.Println("Error creating", destinationFile)
+			fmt.Println(err)
+			return err
+		}
+	}
 
 	// docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org1.example.com/peers/fabric_peer.org1.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org1MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "join", "-b", "/etc/enabler/enabler.block")
 	return nil
@@ -816,7 +847,7 @@ func (f *FabricDefinition) joinOtherOrgPeerToChannel(userId string, networkId st
 	f.Logger.Printf("Joining channel")
 	channelName := "enablerchannel"
 	volumeName := fmt.Sprintf("%s_fabric", networkId)
-	enablerDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
+	enablerDirectory := path.Join(constants.EnablerDir, userId, networkId, "enabler")
 	var storageType string
 	networkDir := path.Join(constants.EnablerDir, userId, networkId)
 	if f.UseVolume {

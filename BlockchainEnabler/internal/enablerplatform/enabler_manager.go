@@ -72,7 +72,7 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 
 	e.InterfaceProvider = em.getBlockchainProvider(e)
 	//  create a function which checks the ports and pass this function to the init.
-	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume); err != nil {
+	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume,initOptions.BasicSetup); err != nil {
 		return err
 	}
 	if err := em.writePlatformInfo(e); err != nil {

@@ -1,7 +1,7 @@
 package blockchain
 
 type IProvider interface {
-	Init(string,bool) error
+	Init(string,bool,bool) error
 	Create(string,bool,bool) error
 	Join(string, string, string, string, string,bool,bool) error
 	Leave(string,string,string)error
