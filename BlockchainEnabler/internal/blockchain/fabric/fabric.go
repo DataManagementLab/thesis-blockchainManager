@@ -193,7 +193,7 @@ func getDeployerInstance(deployerType string) (deployer deployer.IDeployer) {
 	return GetFabricDockerInstance()
 }
 
-func (f *FabricDefinition) Create(userId string, useSDK bool, useVolume bool) (err error) {
+func (f *FabricDefinition) Create(userId string, useSDK bool, useVolume bool, basicSetup bool) (err error) {
 	// Step to do inside the create function
 
 	// 1.Also need to check if the docker is present in the host machine.
@@ -201,14 +201,21 @@ func (f *FabricDefinition) Create(userId string, useSDK bool, useVolume bool) (e
 	verbose = true
 	f.Deployer = getDeployerInstance(f.DeployerType)
 	userIdentification = userId
+	workingDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
 	if useVolume {
 		fmt.Sprintln("Use volume")
 	} else {
-		fmt.Sprintln("Donot use the volume")
+		fmt.Sprintln("Do not use the volume")
 	}
 	f.generateCryptoMaterial(userId, useVolume)
+	if basicSetup {
+		if err := f.Deployer.Deploy(workingDir); err != nil {
+			return err
+		}
+		return nil
+	}
 	f.generateGenesisBlock(userId, useVolume)
-	workingDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
+
 	fmt.Printf("Working directory %s", workingDir)
 
 	if err := f.Deployer.Deploy(workingDir); err != nil {
@@ -304,7 +311,6 @@ func (f *FabricDefinition) Leave(networkId string, orgName string, userId string
 // This functin creates org3 as for joining and along with that generates the definition file for the org3.
 func (f *FabricDefinition) createOrganizationForJoin(userId string, networkId string, orgName string) (err error) {
 	blockchainDirectory := path.Join(constants.EnablerDir, userId, networkId, "blockchain")
-	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
 	configtxPath := path.Join(blockchainDirectory, "configtx.yaml")
 	volumeName := fmt.Sprintf("%s_fabric", networkId)
 	enablerPath := path.Join(constants.EnablerDir, userId, networkId, "enabler")
@@ -319,11 +325,6 @@ func (f *FabricDefinition) createOrganizationForJoin(userId string, networkId st
 		storageType = enablerPath
 	}
 
-	f.Logger.Printf("Using the fabric tools to generate the msp with cryptogen tool in the shared volume location")
-	// Run cryptogen to generate MSP
-	if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler/template.yaml", cryptogenYamlPath), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "hyperledger/fabric-tools:2.3", "cryptogen", "generate", "--config", "/etc/enabler/template.yaml", "--output", "/etc/enabler/organizations"); err != nil {
-		return err
-	}
 	// Running the configtxgen command to get the org3 definition and store it in the current folder.
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm -v %s:/etc/hyperledger/fabric/configtx.yaml -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxgen --printOrg %sMSP > %s/%s.json", configtxPath, storageType, orgName, enablerPath, orgName))
 

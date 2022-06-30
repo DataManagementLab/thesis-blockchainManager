@@ -82,10 +82,10 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
-func (em *EnablerPlatformManager) CreateNetwork(useVolume bool) {
+func (em *EnablerPlatformManager) CreateNetwork(useVolume bool,basicSetup bool) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, false, useVolume)
+			network.InterfaceProvider.Create(em.UserId, false, useVolume,basicSetup)
 		}
 	}
 	// Things to do here
@@ -93,10 +93,10 @@ func (em *EnablerPlatformManager) CreateNetwork(useVolume bool) {
 	// 1. calling the function for the blockchain network create.
 }
 
-func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool) {
+func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool,basicSetup bool) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, true, false)
+			network.InterfaceProvider.Create(em.UserId, true, false,basicSetup)
 		}
 	}
 }
