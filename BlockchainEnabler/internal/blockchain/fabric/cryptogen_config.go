@@ -17,7 +17,9 @@
 package fabric
 
 import (
+	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -44,7 +46,7 @@ type Spec struct {
 }
 
 type Org struct {
-	Name          string    `yaml:"Orderer,omitempty"`
+	Name          string    `yaml:"Name,omitempty"`
 	Domain        string    `yaml:"Domain,omitempty"`
 	EnableNodeOUs bool      `yaml:"EnableNodeOUs"`
 	Specs         []*Spec   `yaml:"Specs,omitempty"`
@@ -58,7 +60,8 @@ type CryptogenConfig struct {
 	PeerOrgs    []*Org `yaml:"PeerOrgs,omitempty"`
 }
 
-func WriteCryptogenConfig(memberCount int, path string) error {
+func WriteCryptogenConfig(memberCount int, path string, orgName string,basicSetup bool) error {
+	var cryptogenConfigBytes []byte
 	cryptogenConfig := &CryptogenConfig{
 		OrdererOrgs: []*Org{
 			{
@@ -72,19 +75,19 @@ func WriteCryptogenConfig(memberCount int, path string) error {
 		},
 		PeerOrgs: []*Org{
 			{
-				Name:          "Org1",
-				Domain:        "org1.example.com",
+				Name:          fmt.Sprintf("%s", orgName),
+				Domain:        fmt.Sprintf("%s.example.com", strings.ToLower(orgName)),
 				EnableNodeOUs: true,
 				CA: &CA{
 					Hostname:           "fabric_ca",
-					Country:            "US",
-					Province:           "North Carolina",
-					Locality:           "Raleigh",
+					Country:            "Germany",
+					Province:           "Hessen",
+					Locality:           "Darmstadt",
 					OrganizationalUnit: "Blockchain Enabler",
 				},
 				Template: &Template{
-					Count:    1,
-					Hostname: "fabric_peer",
+					Count: 1,
+					// Hostname: "fabric_peer",
 				},
 				Users: &Users{
 					Count: memberCount,
@@ -92,7 +95,34 @@ func WriteCryptogenConfig(memberCount int, path string) error {
 			},
 		},
 	}
+	cryptogenConfigBasicSetup := &CryptogenConfig{
+		PeerOrgs: []*Org{
+			{
+				Name:          fmt.Sprintf("%s", orgName),
+				Domain:        fmt.Sprintf("%s.example.com", strings.ToLower(orgName)),
+				EnableNodeOUs: true,
+				CA: &CA{
+					Hostname:           "fabric_ca",
+					Country:            "Germany",
+					Province:           "Hessen",
+					Locality:           "Darmstadt",
+					OrganizationalUnit: "Blockchain Enabler",
+				},
+				Template: &Template{
+					Count: 1,
+					// Hostname: "fabric_peer",
+				},
+				Users: &Users{
+					Count: memberCount,
+				},
+			},
+		},
+	}
+	if basicSetup{
+		cryptogenConfigBytes, _ = yaml.Marshal(cryptogenConfigBasicSetup)
+	}else{
+		cryptogenConfigBytes, _ = yaml.Marshal(cryptogenConfig)
+	}
 
-	cryptogenConfigBytes, _ := yaml.Marshal(cryptogenConfig)
 	return ioutil.WriteFile(path, cryptogenConfigBytes, 0755)
 }

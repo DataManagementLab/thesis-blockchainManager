@@ -41,7 +41,7 @@ var leaveCmd = &cobra.Command{
 		leavePlatformEnabler.LoadUser(parentNetworkName, userID)
 		// logger.Printf(joinPlatformManager.UserId)
 		
-		leavePlatformEnabler.LeaveNetwork(networkName, orgID)
+		leavePlatformEnabler.LeaveNetwork(networkName, orgID,useVolume)
 	},
 }
 

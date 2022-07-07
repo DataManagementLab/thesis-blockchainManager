@@ -17,8 +17,10 @@
 package fabric
 
 import (
+	"BlockchainEnabler/BlockchainEnabler/internal/types"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -111,12 +113,17 @@ type FabricNetworkConfig struct {
 	Version                string                    `yaml:"version,omitempty"`
 }
 
-func WriteNetworkConfig(outputPath string, enablerPath string) error {
+func WriteNetworkConfig(outputPath string, enablerPath string, member types.Member) error {
+	var peerName string
+	var orgDomain string
+	orgDomain = fmt.Sprintf("%s.example.com",strings.ToLower(member.OrgName))
+	peerName = fmt.Sprintf("%s.%s", member.NodeName, orgDomain)
+
 	networkConfig := &FabricNetworkConfig{
 		CertificateAuthorities: map[string]*NetworkEntity{
-			"org1.example.com": {
+			fmt.Sprintf("%s",orgDomain): {
 				TLSCACerts: &Path{
-					Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/ca/fabric_ca.org1.example.com-cert.pem", enablerPath),
+					Path: fmt.Sprintf("%s/organizations/peerOrganizations/%s/ca/fabric_ca.%s-cert.pem", enablerPath, orgDomain, orgDomain),
 				},
 				URL: "http://fabric_ca:7054",
 				Registrar: &Registrar{
@@ -129,7 +136,7 @@ func WriteNetworkConfig(outputPath string, enablerPath string) error {
 			"enablerchannel": {
 				Orderers: []string{"fabric_orderer"},
 				Peers: map[string]*ChannelPeer{
-					"fabric_peer": {
+					fmt.Sprintf("%s", peerName): {
 						ChaincodeQuery: true,
 						EndorsingPeer:  true,
 						EventSource:    true,
@@ -152,24 +159,24 @@ func WriteNetworkConfig(outputPath string, enablerPath string) error {
 			},
 			CredentialStore: &CredentialStore{
 				CryptoStore: &Path{
-					Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/msp", enablerPath),
+					Path: fmt.Sprintf("%s/organizations/peerOrganizations/%s/msp", enablerPath, orgDomain),
 				},
-				Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/msp", enablerPath),
+				Path: fmt.Sprintf("%s/organizations/peerOrganizations/%s/msp", enablerPath, orgDomain),
 			},
 			CryptoConfig: &Path{
-				Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/msp", enablerPath),
+				Path: fmt.Sprintf("%s/organizations/peerOrganizations/%s/msp", enablerPath, orgDomain),
 			},
 			Logging: &Logging{
 				Level: "info",
 			},
-			Organization: "org1.example.com",
+			Organization: fmt.Sprintf("%s", orgDomain),
 			TLSCerts: &TLSCerts{
 				Client: &TLSCertsClient{
 					Cert: &Path{
-						Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt", enablerPath),
+						Path: fmt.Sprintf("%s/organizations/peerOrganizations/%s/users/Admin@%s/tls/client.crt", enablerPath, orgDomain, orgDomain),
 					},
 					Key: &Path{
-						Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key", enablerPath),
+						Path: fmt.Sprintf("%s/organizations/peerOrganizations/%s/users/Admin@%s/tls/client.key", enablerPath, orgDomain, orgDomain),
 					},
 				},
 			},
@@ -183,19 +190,19 @@ func WriteNetworkConfig(outputPath string, enablerPath string) error {
 			},
 		},
 		Organizations: map[string]*Organization{
-			"org1.example.com": {
-				CertificateAuthorities: []string{"org1.example.com"},
-				CryptoPath:             fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp", enablerPath),
-				MSPID:                  "Org1MSP",
-				Peers:                  []string{"fabric_peer"},
+			fmt.Sprintf("%s", orgDomain): {
+				CertificateAuthorities: []string{fmt.Sprintf("%s", orgDomain)},
+				CryptoPath:             fmt.Sprintf("%s/organizations/peerOrganizations/%s/users/Admin@%s/msp", enablerPath, orgDomain, orgDomain),
+				MSPID:                  fmt.Sprintf("%sMSP",member.OrgName),
+				Peers:                  []string{peerName},
 			},
 		},
 		Peers: map[string]*NetworkEntity{
-			"fabric_peer": {
+			peerName: {
 				TLSCACerts: &Path{
-					Path: fmt.Sprintf("%s/organizations/peerOrganizations/org1.example.com/tlsca/tlsfabric_ca.org1.example.com-cert.pem", enablerPath),
+					Path: fmt.Sprintf("%s/organizations/peerOrganizations/%s/tlsca/tlsfabric_ca.%s-cert.pem", enablerPath, orgDomain, orgDomain),
 				},
-				URL: "grpcs://fabric_peer:7051",
+				URL: fmt.Sprintf("grpcs://%s:7051", peerName),
 			},
 		},
 		Version: "1.1.0%",

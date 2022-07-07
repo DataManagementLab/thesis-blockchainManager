@@ -1,10 +1,10 @@
 package blockchain
 
 type IProvider interface {
-	Init(string) error
-	Create(string,bool) error
-	Join(string, string, string, string, string) error
-	Leave(string,string,string)error
+	Init(string,bool,bool) error
+	Create(string,bool,bool,bool) error
+	Join(string, string, string, string, string,bool,bool) error
+	Leave(string,string,string,bool)error
 	// WriteConfigs() error
 	// GetDockerServiceDefinitions() []*docker.ServiceDefinition
 

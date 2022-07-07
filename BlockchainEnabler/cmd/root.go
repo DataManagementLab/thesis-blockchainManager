@@ -29,6 +29,7 @@ import (
 
 var cfgFile string
 var logger zerolog.Logger = log.Logger
+var useVolume bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -38,11 +39,11 @@ var rootCmd = &cobra.Command{
 	 and use different blockchain as DLT.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	Run: func(cmd *cobra.Command, args []string) { fmt.Println("THis is a cli")},
+	Run: func(cmd *cobra.Command, args []string) { fmt.Println("THis is a cli") },
 }
 
-func settingLogger(){
-	zerolog.TimeFieldFormat  = time.RFC3339
+func settingLogger() {
+	zerolog.TimeFieldFormat = time.RFC3339
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -59,7 +60,7 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.BlockchainEnabler.yaml)")
-
+	rootCmd.PersistentFlags().BoolVarP(&useVolume, "useVolume", "v", false, "Function to enable or disable the use of Volume default: false")
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
@@ -92,11 +93,10 @@ func initConfig() {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
 
-	
 }
 func initLogging(debuglevel int) {
 	// zerolog.TimeFieldFormat = zerolog.TimestampFunc().Format("2006-01-02T15:04:05.000Z07:00")
-	zerolog.TimeFieldFormat =time.RFC3339Nano
+	zerolog.TimeFieldFormat = time.RFC3339Nano
 	switch debuglevel {
 	case 0:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
@@ -109,7 +109,6 @@ func initLogging(debuglevel int) {
 	default:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
-	logger.Printf("THe logging has been set to %d",debuglevel)
-	
-}
+	logger.Printf("THe logging has been set to %d", debuglevel)
 
+}
