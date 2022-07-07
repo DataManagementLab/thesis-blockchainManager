@@ -193,14 +193,14 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 					"/var/run/docker.sock:/host/var/run/docker.sock",
 				},
 				Ports: []string{
-					fmt.Sprintf("%d:%d", external["core_peer_listen_address_gossip_port"], external["core_peer_listen_address_gossip_port"]),
-					fmt.Sprintf("%d:%d", external["core_operations_listen_port"], external["core_operations_listen_port"]),
+					fmt.Sprintf("%d:%d", 7151, external["core_peer_listen_address_gossip_port"]),
+					fmt.Sprintf("%d:%d", 17151, external["core_operations_listen_port"]),
 				},
 				DockerNetworkNames: []string{
 					"byfn",
 				},
 			},
-			VolumeNames: []string{fmt.Sprintf("%s", peerID)},
+			VolumeNames: []string{fmt.Sprintf("%s", peerID),"fabric"},
 		},
 	}
 	if basicSetup {
