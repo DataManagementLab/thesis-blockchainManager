@@ -72,7 +72,7 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 
 	e.InterfaceProvider = em.getBlockchainProvider(e)
 	//  create a function which checks the ports and pass this function to the init.
-	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume,initOptions.BasicSetup); err != nil {
+	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume, initOptions.BasicSetup); err != nil {
 		return err
 	}
 	if err := em.writePlatformInfo(e); err != nil {
@@ -82,10 +82,10 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
-func (em *EnablerPlatformManager) CreateNetwork(useVolume bool,basicSetup bool) {
+func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, basicSetup bool) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, false, useVolume,basicSetup)
+			network.InterfaceProvider.Create(em.UserId, false, useVolume, basicSetup)
 		}
 	}
 	// Things to do here
@@ -93,10 +93,10 @@ func (em *EnablerPlatformManager) CreateNetwork(useVolume bool,basicSetup bool) 
 	// 1. calling the function for the blockchain network create.
 }
 
-func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool,basicSetup bool) {
+func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool, basicSetup bool) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, true, false,basicSetup)
+			network.InterfaceProvider.Create(em.UserId, true, false, basicSetup)
 		}
 	}
 }
@@ -157,12 +157,12 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, networkId2 string, joiningOrgName string, useVolume bool,finalizePhase bool) error {
+func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, networkId2 string, joiningOrgName string, useVolume bool, finalizePhase bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 			if network.NetworkName == networkId2 {
 				// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-				return network.InterfaceProvider.Join(networkId, orgName, networkId2, joiningOrgName, em.UserId, useVolume,finalizePhase)
+				return network.InterfaceProvider.Join(networkId, orgName, networkId2, joiningOrgName, em.UserId, useVolume, finalizePhase)
 			}
 		}
 	}
@@ -171,11 +171,11 @@ func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, 
 	return nil
 }
 
-func (em *EnablerPlatformManager) LeaveNetwork(networkId string, orgName string,useVolume bool) error {
+func (em *EnablerPlatformManager) LeaveNetwork(networkId string, orgName string, useVolume bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
-			return network.InterfaceProvider.Leave(networkId, orgName, em.UserId,useVolume)
+			return network.InterfaceProvider.Leave(networkId, orgName, em.UserId, useVolume)
 
 		}
 	}
@@ -196,6 +196,9 @@ func (em *EnablerPlatformManager) createMember(id string, index int, options *co
 		ExposedAdminPort: serviceBase + 1, // note shared blockchain node is on zero
 		OrgName:          fmt.Sprintf("%s", options.OrgNames[index]),
 		NodeName:         fmt.Sprintf("%s", options.NodeNames[index]),
+		OrdererOrg:       "Orderer",
+		OrdererName:      "fabric_orderer",
+		DomainName:       "example.com",
 	}
 
 }

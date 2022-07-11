@@ -116,7 +116,8 @@ type FabricNetworkConfig struct {
 func WriteNetworkConfig(outputPath string, enablerPath string, member types.Member) error {
 	var peerName string
 	var orgDomain string
-	orgDomain = fmt.Sprintf("%s.example.com",strings.ToLower(member.OrgName))
+	domainName := "example.com"
+	orgDomain = fmt.Sprintf("%s.%s",strings.ToLower(member.OrgName),domainName)
 	peerName = fmt.Sprintf("%s.%s", member.NodeName, orgDomain)
 
 	networkConfig := &FabricNetworkConfig{
@@ -134,7 +135,7 @@ func WriteNetworkConfig(outputPath string, enablerPath string, member types.Memb
 		},
 		Channels: map[string]*Channel{
 			"enablerchannel": {
-				Orderers: []string{"fabric_orderer"},
+				Orderers: []string{fmt.Sprintf("%s",member.OrdererName)},
 				Peers: map[string]*ChannelPeer{
 					fmt.Sprintf("%s", peerName): {
 						ChaincodeQuery: true,
@@ -182,11 +183,11 @@ func WriteNetworkConfig(outputPath string, enablerPath string, member types.Memb
 			},
 		},
 		Orderers: map[string]*NetworkEntity{
-			"fabric_orderer": {
+			fmt.Sprintf("%s",member.OrdererName): {
 				TLSCACerts: &Path{
-					Path: fmt.Sprintf("%s/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem", enablerPath),
+					Path: fmt.Sprintf("%s/organizations/ordererOrganizations/%s/tlsca/tlsca.%s-cert.pem", enablerPath,domainName,domainName),
 				},
-				URL: "grpcs://fabric_orderer:7050",
+				URL: fmt.Sprintf("grpcs://%s:7050",member.OrdererName),
 			},
 		},
 		Organizations: map[string]*Organization{

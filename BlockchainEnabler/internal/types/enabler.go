@@ -23,4 +23,7 @@ type Member struct {
 	ExternalPorts    interface{} `json:"externalPorts,omitempty"`
 	OrgName          string      `json:"orgName,omitempty"`
 	NodeName         string      `json:"nodeName,omitempty"`
+	OrdererName      string      `json:"ordererName,omitempty"`
+	OrdererOrg       string      `json:"ordererOrg,omitempty"`
+	DomainName       string      `json:"domainName,omitempty"`
 }
