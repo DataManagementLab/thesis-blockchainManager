@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/rs/zerolog"
 )
@@ -196,8 +197,8 @@ func (em *EnablerPlatformManager) createMember(id string, index int, options *co
 		ExposedAdminPort: serviceBase + 1, // note shared blockchain node is on zero
 		OrgName:          fmt.Sprintf("%s", options.OrgNames[index]),
 		NodeName:         fmt.Sprintf("%s", options.NodeNames[index]),
-		OrdererOrg:       "Orderer",
-		OrdererName:      "fabric_orderer",
+		OrdererOrg:       fmt.Sprintf("Orderer%s", options.OrgNames[index]),
+		OrdererName:      fmt.Sprintf("fabric_orderer.%s", strings.ToLower(options.OrgNames[index])),
 		DomainName:       "example.com",
 	}
 

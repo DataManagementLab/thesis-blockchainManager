@@ -71,8 +71,8 @@ func init() {
 	rootCmd.AddCommand(createCmd)
 	createCmd.Flags().StringVarP(&userId, "userId", "u", "", "Provide the user Id for the network you want to run.")
 	createCmd.Flags().StringVarP(&networkId, "netid", "n", "", "Provide the network id of the network you want to run.")
-	createCmd.Flags().BoolVarP(&useSDK, "useSDK", "s", false, "Function to enable or disable the use of SDK default: false")
-	createCmd.Flags().BoolVarP(&basic, "basicSetup", "b", false, "Function to enable or disable the use of Basic setup default: false")
+	createCmd.Flags().BoolVarP(&useSDK, "useSDK", "l", false, "Function to enable or disable the use of SDK default: false")
+	createCmd.Flags().BoolVarP(&basic, "simpleSetup", "s", false, "Function to enable or disable the use of Basic setup default: false")
 
 	// Here you will define your flags and configuration settings.
 

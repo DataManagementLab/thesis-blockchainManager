@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -99,6 +100,32 @@ func writeConfigtxYaml(blockchainPath string, basicSetup bool) error {
 	return ioutil.WriteFile(filePath, []byte(configtxYaml), 0755)
 }
 
+func transformConfigtxYaml(blockchainPath string, basicSetup bool, orgName string, ordererName string) error {
+	filePath := path.Join(blockchainPath, "configtx.yaml")
+	if basicSetup {
+		re := regexp.MustCompile(`(Org3)`)
+		replaced := re.ReplaceAllString(configtxBasicSetupYaml, fmt.Sprintf("%s", orgName))
+		re = regexp.MustCompile("org3")
+		replaced = re.ReplaceAllString(replaced, fmt.Sprintf("%s", strings.ToLower(orgName)))
+
+		return ioutil.WriteFile(filePath, []byte(replaced), 0755)
+	}
+	re := regexp.MustCompile(`(Org1)`)
+	replaced := re.ReplaceAllString(configtxYaml, fmt.Sprintf("%s", orgName))
+	re = regexp.MustCompile("org1")
+	replaced = re.ReplaceAllString(replaced, fmt.Sprintf("%s", strings.ToLower(orgName)))
+	re = regexp.MustCompile("OrdererOrg")
+	replaced = re.ReplaceAllString(replaced, fmt.Sprintf("Orderer%s", orgName))
+	re = regexp.MustCompile("OrdererMSP")
+	replaced = re.ReplaceAllString(replaced, fmt.Sprintf("Orderer%sMSP", orgName))
+	re = regexp.MustCompile("fabric_orderer")
+	replaced = re.ReplaceAllString(replaced, fmt.Sprintf("%s", ordererName))
+
+	return ioutil.WriteFile(filePath, []byte(replaced), 0755)
+
+	// return nil
+}
+
 // The port checker functionality can be implemented in the enabler_manager and then it is passed as a function here too, as the fabric would have an implementation for
 // the ports it wishes to utilize.
 func (f *FabricDefinition) writeConfigs(userId string, net *types.Member, basicSetup bool) (err error) {
@@ -120,7 +147,10 @@ func (f *FabricDefinition) writeConfigs(userId string, net *types.Member, basicS
 	if err := WriteNetworkConfig(path.Join(blockchainDirectory, "ccp.yaml"), path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler"), *net); err != nil {
 		return err
 	}
-	if err := writeConfigtxYaml(blockchainDirectory, basicSetup); err != nil {
+	// if err := writeConfigtxYaml(blockchainDirectory, basicSetup); err != nil {
+	// 	return err
+	// }
+	if err := transformConfigtxYaml(blockchainDirectory, basicSetup, net.OrgName, net.OrdererName); err != nil {
 		return err
 	}
 
@@ -428,7 +458,7 @@ func (f *FabricDefinition) createAnchorPeer(userID string, networkId string, org
 	// Then only it would work.
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-v", fmt.Sprintf("%s/enabler/tlsca.example.com-cert.pem:/etc/enabler/tlsca.example.com-cert.pem", networkDir), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
 		fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", orgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3",
-		"peer", "channel", "update", "-f", "/etc/enabler/anchor_update_in_envelope.pb", "-c", fmt.Sprintf("%s", channelName), "-o", fmt.Sprintf("%s:7050",f.Enabler.Members[0].OrdererName), "--tls", "--cafile", fmt.Sprintf("%s/tlsca.%s-cert.pem", "/etc/enabler",f.Enabler.Members[0].DomainName))
+		"peer", "channel", "update", "-f", "/etc/enabler/anchor_update_in_envelope.pb", "-c", fmt.Sprintf("%s", channelName), "-o", fmt.Sprintf("%s:7050", f.Enabler.Members[0].OrdererName), "--tls", "--cafile", fmt.Sprintf("%s/tlsca.%s-cert.pem", "/etc/enabler", f.Enabler.Members[0].DomainName))
 
 	fmt.Printf(" %s\n", out)
 	return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e", fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", orgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3", "peer", "channel", "getinfo", "-c", "enablerchannel")
@@ -494,7 +524,7 @@ func (f *FabricDefinition) leaveNetwork(userID string, networkId string, orgName
 
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
 		fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", orgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3",
-		"peer", "channel", "signconfigtx", "-f", fmt.Sprintf("/etc/enabler/%s", "config_update_in_envelope.pb"), "--tls", "--cafile",  fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName))
+		"peer", "channel", "signconfigtx", "-f", fmt.Sprintf("/etc/enabler/%s", "config_update_in_envelope.pb"), "--tls", "--cafile", fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName))
 
 	if f.UseVolume {
 		docker.CopyFromContainer(fmt.Sprintf("%s", peerID), "/etc/enabler/config_update_in_envelope.pb", fmt.Sprintf("%s/enabler/config_update_in_envelope.pb", networkDir), verbose)
@@ -777,6 +807,10 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool)
 			return err
 		}
 	}
+	fmt.Printf("Check for network")
+	if err := docker.InspectNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true); err != nil {
+		docker.CreateNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true)
+	}
 
 	return nil
 }
@@ -785,7 +819,6 @@ func (f *FabricDefinition) generateGenesisBlock(userId string, useVolume bool) (
 	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "blockchain")
 	enablerDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
-
 	f.Logger.Printf("Using the fabric tools to generate the Gensis block in the shared volume location")
 	// Generate genesis block
 	// might also need to generate the configtx yaml file according the orgname and even the name as example.com does not seem quite good enough
@@ -813,11 +846,6 @@ func (f *FabricDefinition) generateGenesisBlock(userId string, useVolume bool) (
 		// 	return err
 		// }
 		// docker.CopyFromContainer(fmt.Sprintf("%s_fabric_orderer", f.Enabler.NetworkName), "/etc/enabler/genesis.block", fmt.Sprintf("%s/genesis.block", enablerDirectory), verbose)
-
-		// if err := docker.CreateNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true); err != nil {
-		// 	//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
-		// 	return err
-		// }
 	}
 
 	return nil

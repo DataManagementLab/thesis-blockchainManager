@@ -41,13 +41,13 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 	serviceDefinitions := []*docker.ServiceDefinition{
 		// Fabric CA
 		{
-			ServiceName: fmt.Sprintf("fabric_ca"),
+			ServiceName: fmt.Sprintf("fabric_ca.%s", strings.ToLower(member.OrgName)),
 			Service: &docker.Service{
 				Image:         "hyperledger/fabric-ca:1.5",
-				ContainerName: fmt.Sprintf("fabric_ca"),
+				ContainerName: fmt.Sprintf("fabric_ca.%s", strings.ToLower(member.OrgName)),
 				Environment: map[string]string{
 					"FABRIC_CA_HOME":                            "/etc/hyperledger/fabric-ca-server",
-					"FABRIC_CA_SERVER_CA_NAME":                  "fabric_ca",
+					"FABRIC_CA_SERVER_CA_NAME":                  fmt.Sprintf("fabric_ca.%s", strings.ToLower(member.OrgName)),
 					"FABRIC_CA_SERVER_PORT":                     fmt.Sprintf("%d", external["ca_server_port"]),
 					"FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS": fmt.Sprintf("0.0.0.0:%d", external["ca_operations_listen_port"]),
 					"FABRIC_CA_SERVER_CA_CERTFILE":              fmt.Sprintf("/etc/enabler/organizations/peerOrganizations/%s/ca/fabric_ca.%s-cert.pem", orgDomain, orgDomain),

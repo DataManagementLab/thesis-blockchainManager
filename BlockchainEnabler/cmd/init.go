@@ -140,7 +140,7 @@ func init() {
 	// initCmd.Flags().BoolVarP(&confFile, "conf", "f", false, "Configuration file")
 	initCmd.Flags().StringVarP(&networkID, "networkID", "n", "kinshuk_network1", "Provide the name for the network.")
 	initCmd.Flags().StringVarP(&organizationName, "orgName", "o", "Org1", "Provide the name for the organization default value org1.")
-	initCmd.Flags().BoolVarP(&basicSetup, "basicSetup", "s", false, "Choose this to form a network without the orderer.")
+	initCmd.Flags().BoolVarP(&basicSetup, "simpleSetup", "s", false, "Choose this to form a network without the orderer.")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
