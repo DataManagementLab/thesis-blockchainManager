@@ -26,4 +26,5 @@ type Member struct {
 	OrdererName      string      `json:"ordererName,omitempty"`
 	OrdererOrg       string      `json:"ordererOrg,omitempty"`
 	DomainName       string      `json:"domainName,omitempty"`
+	ChannelName      string      `json:"channelName,omitempty"`
 }

@@ -83,10 +83,10 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
-func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, basicSetup bool) {
+func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, basicSetup bool, externalNetwork string) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, false, useVolume, basicSetup)
+			network.InterfaceProvider.Create(em.UserId, false, useVolume, basicSetup, externalNetwork)
 		}
 	}
 	// Things to do here
@@ -94,10 +94,10 @@ func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, basicSetup bool)
 	// 1. calling the function for the blockchain network create.
 }
 
-func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool, basicSetup bool) {
+func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool, basicSetup bool, externalNetwork string) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, true, false, basicSetup)
+			network.InterfaceProvider.Create(em.UserId, true, false, basicSetup, externalNetwork)
 		}
 	}
 }
@@ -200,6 +200,7 @@ func (em *EnablerPlatformManager) createMember(id string, index int, options *co
 		OrdererOrg:       fmt.Sprintf("Orderer%s", options.OrgNames[index]),
 		OrdererName:      fmt.Sprintf("fabric_orderer.%s", strings.ToLower(options.OrgNames[index])),
 		DomainName:       "example.com",
+		ChannelName:      fmt.Sprintf("channel%s", strings.ToLower(options.OrgNames[index])),
 	}
 
 }
