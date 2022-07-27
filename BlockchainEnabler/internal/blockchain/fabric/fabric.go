@@ -300,7 +300,7 @@ func (f *FabricDefinition) Join(networkId string, orgName string, userid string,
 		f.envelopeBlockCreation(userid, networkId, orgName)
 		f.signConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName))
 		f.signAndUpdateConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName))
-		f.loadGenesisFileToOrg(networkId)
+		// f.loadGenesisFileToOrg(networkId)
 	} else {
 		// workingDir := path.Join(constants.EnablerDir, userid, networkId)
 
@@ -393,10 +393,11 @@ func (f *FabricDefinition) fetchConfigBlock(userId string) (err error) {
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 jq .data.data[0].payload.data.config /etc/enabler/config.json > %s/enabler/config1.json", f.Enabler.NetworkName, storageType, networkDir))
 
 	out, err := cmd.Output()
+	fmt.Printf(" %s\n", out)
 	if err != nil {
 		return err
 	}
-	fmt.Printf(" %s\n", out)
+
 	return nil
 }
 
