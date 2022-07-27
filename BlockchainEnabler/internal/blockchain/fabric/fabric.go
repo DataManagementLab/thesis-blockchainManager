@@ -74,6 +74,7 @@ func (f *FabricDefinition) Init(userId string, useVolume bool, basicSetup bool) 
 	if err := f.writeConfigs(userId, f.Enabler.Members[0], basicSetup); err != nil {
 		return err
 	}
+	f.generateCryptoMaterial(userId, useVolume)
 	// Need to call the deployer-> which can be anything from kubernetes to docker -> depending on the user choice.
 	// by default it is docker
 	// getDeployerInstance("docker")
@@ -232,7 +233,7 @@ func (f *FabricDefinition) Create(userId string, useSDK bool, useVolume bool, ba
 	f.Deployer = getDeployerInstance(f.DeployerType)
 	userIdentification = userId
 	workingDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
-	f.generateCryptoMaterial(userId, useVolume)
+
 	if basicSetup {
 		if err := f.Deployer.Deploy(workingDir); err != nil {
 			return err
@@ -257,6 +258,7 @@ func (f *FabricDefinition) Create(userId string, useSDK bool, useVolume bool, ba
 		f.createChannel(userId, useVolume, externalNetwork)
 		f.joinChannel(userId, useVolume, externalNetwork)
 		f.getBlockInformation(userId, useVolume)
+		f.fetchChannelGenesisBlock()
 
 		// Fetching the ccp file.
 
@@ -275,7 +277,7 @@ func (f *FabricDefinition) Create(userId string, useSDK bool, useVolume bool, ba
 	return nil
 }
 
-func (f *FabricDefinition) Join(networkId string, orgName string, networkId2 string, joiningOrgName string, userid string, useVolume bool, finalizePhase bool) (err error) {
+func (f *FabricDefinition) Join(networkId string, orgName string, userid string, useVolume bool, invitePhase bool) (err error) {
 	// Starting step would be to check if the network is already present and if so then it would kind of load the network.(Dont exactly know how it should load the network)
 	// The first step can be to try to get the location for the org and then using the tool to generate the files needed.
 	// the files which are needed are the crypto, configtx, docker-compose.
@@ -291,21 +293,18 @@ func (f *FabricDefinition) Join(networkId string, orgName string, networkId2 str
 	// The previous step should be asynchronous though
 
 	// Steps done by the Organization after
-	if !finalizePhase {
-		f.createOrganizationForJoin(userid, networkId, orgName)
+	if invitePhase {
+		// f.createOrganizationForJoin(userid, networkId, orgName)
 		f.fetchConfigBlock(userid)
 
 		f.envelopeBlockCreation(userid, networkId, orgName)
 		f.signConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName))
 		f.signAndUpdateConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName))
-
-		f.fetchChannelGenesisBlock()
 		f.loadGenesisFileToOrg(networkId)
 	} else {
-		workingDir := path.Join(constants.EnablerDir, userid, networkId)
+		// workingDir := path.Join(constants.EnablerDir, userid, networkId)
 
-		f.Deployer.Deploy(workingDir)
-
+		// f.Deployer.Deploy(workingDir)
 		f.joinOtherOrgPeerToChannel(userid, networkId, orgName)
 
 		f.createAnchorPeer(userid, networkId, orgName)
@@ -793,6 +792,11 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool)
 	enablerPath := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
 	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
+	enablerDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
+	orgName := f.Enabler.Members[0].OrgName
+	networkDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
+	blockchainDir := path.Join(networkDir, "blockchain")
+	var cmd *exec.Cmd
 
 	// volumeName := fmt.Sprintf("enabler_fabric")
 	f.Logger.Printf("Generating the volume with volume name: %s", volumeName)
@@ -805,15 +809,26 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool)
 		if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/template.yml", cryptogenYamlPath), "-v", fmt.Sprintf("%s:/etc/enabler", enablerPath), "hyperledger/fabric-tools:2.3", "cryptogen", "generate", "--config", "/etc/template.yml", "--output", "/etc/enabler/organizations"); err != nil {
 			return err
 		}
+		cmd = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm -v %s/configtx.yaml:/etc/hyperledger/fabric/configtx.yaml -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxgen --printOrg %sMSP > %s/%s.json", blockchainDir, enablerDirectory, orgName, enablerDirectory, orgName))
+
 	} else {
 		if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/template.yml", cryptogenYamlPath), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "cryptogen", "generate", "--config", "/etc/template.yml", "--output", "/etc/enabler/organizations"); err != nil {
 			return err
 		}
+		cmd = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm -v %s/configtx.yaml:/etc/hyperledger/fabric/configtx.yaml -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxgen --printOrg %sMSP > %s/%s.json", blockchainDir, volumeName, orgName, enablerDirectory, orgName))
+
 	}
 	fmt.Printf("Check for network")
 	if err := docker.InspectNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true); err != nil {
 		docker.CreateNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true)
 	}
+	fmt.Printf(" %s\n", cmd)
+	out, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s", out)
 
 	return nil
 }
@@ -927,29 +942,14 @@ func (f *FabricDefinition) getBlockInformation(userId string, useVolume bool) er
 	verbose := true
 	f.Logger.Printf("Get block information")
 	enablerDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
-	orgName := f.Enabler.Members[0].OrgName
 	networkDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
-	blockchainDir := path.Join(networkDir, "blockchain")
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
-	var cmd *exec.Cmd
 	if useVolume {
-		cmd = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm -v %s/configtx.yaml:/etc/hyperledger/fabric/configtx.yaml -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxgen --printOrg %sMSP > %s/%s.json", blockchainDir, volumeName, orgName, enablerDirectory, orgName))
 		docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "hyperledger/fabric-tools:2.3", "configtxlator", "proto_decode", "--input", "/etc/enabler/enabler.block", "--output", "/etc/enabler/enabler.json", "--type", "common.Block")
 
 	} else {
-		cmd = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm -v %s/configtx.yaml:/etc/hyperledger/fabric/configtx.yaml -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxgen --printOrg %sMSP > %s/%s.json", blockchainDir, enablerDirectory, orgName, enablerDirectory, orgName))
-
 		docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", enablerDirectory), "hyperledger/fabric-tools:2.3", "configtxlator", "proto_decode", "--input", "/etc/enabler/enabler.block", "--output", "/etc/enabler/enabler.json", "--type", "common.Block")
-
 	}
-	fmt.Printf(" %s\n", cmd)
-	out, err := cmd.Output()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%s", out)
-
 	return nil
 
 }

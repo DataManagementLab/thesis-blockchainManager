@@ -66,7 +66,7 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	// if the user chooses the docker deployment -> then the function needs to call the provider and then run the functions specific to the docker.
 	// Otherwise it should call the functions specific to the k8s.
 	//
-	// Creating the directory structure.
+	// Creating the  structure.
 	if err := em.ensureDirectories(e); err != nil {
 		return err
 	}
@@ -117,10 +117,18 @@ func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.Network) (err
 	if err := ioutil.WriteFile(filepath.Join(constants.EnablerDir, em.UserId, network.NetworkName, fmt.Sprintf("%s_info.json", network.NetworkName)), platformConfigBytes, 0755); err != nil {
 		return err
 	}
+	if err := ioutil.WriteFile(filepath.Join(constants.EnablerDir, em.UserId, fmt.Sprintf("network_info.json")), platformConfigBytes, 0755); err != nil {
+		return err
+	}
 	return nil
 }
 func (em *EnablerPlatformManager) LoadUser(netId string, userId string) error {
-	infoFile := filepath.Join(constants.EnablerDir, userId, netId, fmt.Sprintf("%s_info.json", netId))
+	var infoFile string
+	if netId != "" {
+		infoFile = filepath.Join(constants.EnablerDir, userId, netId, fmt.Sprintf("%s_info.json", netId))
+	} else {
+		infoFile = filepath.Join(constants.EnablerDir, userId, fmt.Sprintf("network_info.json"))
+	}
 	// can read from the json file outside the names of the networks that are created and then looping through them and opening them.
 	// or can use a file which is outside which contains all the info to the different networks and is appended one thing this would do is making things easier while searching for port used.
 	em.logger.Printf("Loading the Network ....")
@@ -148,6 +156,9 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	if err := os.MkdirAll(filepath.Join(enablerDir, "configs"), 0755); err != nil {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Join(enablerDir, "enabler"), 0755); err != nil {
+		return err
+	}
 
 	for _, member := range s.Members {
 
@@ -158,13 +169,13 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, networkId2 string, joiningOrgName string, useVolume bool, finalizePhase bool) error {
+func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, useVolume bool, invitePhase bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			if network.NetworkName == networkId2 {
+			
 				// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-				return network.InterfaceProvider.Join(networkId, orgName, networkId2, joiningOrgName, em.UserId, useVolume, finalizePhase)
-			}
+				return network.InterfaceProvider.Join(networkId, orgName, em.UserId, useVolume, invitePhase)
+			
 		}
 	}
 

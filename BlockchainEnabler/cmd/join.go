@@ -27,7 +27,9 @@ var orgName string
 var joiningOrgName string
 var networkId1 string
 var networkId2 string
-var finalize bool
+var invite bool
+var accept bool
+
 // var finalize bool
 
 // joinCmd represents the join command
@@ -52,13 +54,18 @@ to quickly create a Cobra application.`,
 		// After they are loaded, then we initialize the instance as a fabric / ethereum instance which could be then implemented.
 
 		joinPlatformManager = enablerplatform.GetInstance(&logger)
-		joinPlatformManager.LoadUser(networkId2, userId)
+		joinPlatformManager.LoadUser("", userId)
 		fmt.Println("Value of use Volume", useVolume)
 		// joinPlatformManager.Options.UseVolume = useVolume
 
 		logger.Printf(joinPlatformManager.UserId)
-		fmt.Println("Value for prepareation ",finalize)
-		joinPlatformManager.JoinNetwork(networkId1, orgName, networkId2, joiningOrgName, useVolume,finalize)
+		fmt.Println("Value for prepareation ",invite)
+		if invite{
+			accept = false
+		}else{
+			accept = true
+		}
+		joinPlatformManager.JoinNetwork(networkId, orgName, useVolume,invite)
 
 	},
 }
@@ -69,13 +76,13 @@ func init() {
 
 	joinCmd.Flags().StringVarP(&userId, "userId", "u", "", "The User ID for the user.")
 
-	joinCmd.Flags().StringVarP(&orgName, "orgname1", "o", "", "The organization name which wants to join the network.")
-	joinCmd.Flags().StringVarP(&networkId1, "networkId1", "n", "", "The Network the organization which wants to join another network.")
-	joinCmd.Flags().StringVarP(&networkId2, "networkId2", "m", "", "The Network the organization is part of currently organization is only identifiable by the user, network name.")
+	joinCmd.Flags().StringVarP(&orgName, "orgName", "o", "", "The organization name which wants to join the network.")
+	joinCmd.Flags().StringVarP(&networkId, "networkId", "n", "", "The Network the organization which wants to join another network.")
+	joinCmd.Flags().BoolVar(&invite, "invite", false, "Function to tell which phase it is. This stage is run by the org which is to be joined.")
+	joinCmd.Flags().BoolVar(&accept, "accept", false, "Accept phase is when the joining org join the network.")
+	// joinCmd.Flags().StringVar(&configFile,"config","","Provide the config file needed to add Organization in network.")
+	
 
-	joinCmd.Flags().StringVarP(&joiningOrgName, "orgname2", "j", "", "The organization name whose network is to be joined.")
-
-	joinCmd.Flags().BoolVarP(&finalize, "finalize", "f", false, "Function to tell which phase it is as join is divided into two phases preparation and finalize. It runs on behalf of the adding network.")
 	// joinCmd.Flags().BoolVarP(&finalize, "finalize", "f", false, "This phase runs on the behalf of the joining network.")
 
 	// joinPlatformManager = enablerplatform.GetInstance(&logger)
