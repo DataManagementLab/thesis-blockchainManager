@@ -4,6 +4,7 @@ import (
 	"BlockchainEnabler/BlockchainEnabler/internal/constants"
 	"BlockchainEnabler/BlockchainEnabler/internal/deployer/docker"
 	"BlockchainEnabler/BlockchainEnabler/internal/types"
+	"bytes"
 	_ "embed"
 	"fmt"
 	"io/ioutil"
@@ -386,18 +387,22 @@ func (f *FabricDefinition) fetchConfigBlock(userId string) (err error) {
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
 		fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", f.Enabler.Members[0].OrgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3",
 		"peer", "channel", "fetch", "config", "/etc/enabler/config_block.pb", "-c", channelName, "-o", fmt.Sprintf("%s:7050", f.Enabler.Members[0].OrdererName), "--tls", "--cafile", fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName))
-	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
+	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
 		fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", f.Enabler.Members[0].OrgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3",
 		"configtxlator", "proto_decode", "--input", "/etc/enabler/config_block.pb", "--type", "common.Block", "--output", "/etc/enabler/config.json")
 
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 jq .data.data[0].payload.data.config /etc/enabler/config.json > %s/enabler/config1.json", f.Enabler.NetworkName, storageType, networkDir))
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 jq .data.data[0].payload.data.config '/etc/enabler/config.json' > '%s/enabler/config1.json'", f.Enabler.NetworkName, storageType, networkDir))
 
-	out, err := cmd.Output()
-	fmt.Printf(" %s\n", out)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err = cmd.Run()
 	if err != nil {
-		return err
+		fmt.Println(fmt.Sprint(err) + ": " + stderr.String())
+		return
 	}
-
+	fmt.Println("Result: " + out.String() + cmd.String())
 	return nil
 }
 
@@ -556,11 +561,11 @@ func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string
 	var storageType string
 	var channelName string
 	channelName = f.Enabler.Members[0].ChannelName
-	domainName := "example.com"
+	// domainName := "example.com"
 
-	peerID := fmt.Sprintf("%s.%s.%s", "peer0", strings.ToLower(f.Enabler.Members[0].OrgName), domainName)
+	// peerID := fmt.Sprintf("%s.%s.%s", "peer0", strings.ToLower(f.Enabler.Members[0].OrgName), domainName)
 	enablerPath := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
-	orgDefFilePath := path.Join(path.Join(constants.EnablerDir, userId, networkId, "enabler"), fmt.Sprintf("%s.json", orgName))
+	// orgDefFilePath := path.Join(path.Join(constants.EnablerDir, userId, networkId, "enabler"), fmt.Sprintf("%s.json", orgName))
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
 	if f.UseVolume {
 		storageType = volumeName
@@ -568,10 +573,23 @@ func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string
 		storageType = enablerPath
 	}
 	// Required Step
-	out, err := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler -v %s:/etc/enabler/%s.json -v %s/enabler/config1.json:/etc/enabler/config1.json hyperledger/fabric-tools:2.3 jq -s '.[0] * {\"channel_group\":{\"groups\":{\"Application\":{\"groups\": {\"%sMSP\":.[1]}}}}}' /etc/enabler/config1.json /etc/enabler/%s.json > %s/enabler/modified_config.json ", f.Enabler.NetworkName, storageType, orgDefFilePath, orgName, networkDir, orgName, orgName, networkDir)).Output()
+	fmt.Println("Create Envelope Block")
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 jq -s '.[0] * {\"channel_group\":{\"groups\":{\"Application\":{\"groups\": {\"%sMSP\":.[1]}}}}}' '/etc/enabler/config1.json' '/etc/enabler/%s.json' > '%s/enabler/modified_config.json' ", f.Enabler.NetworkName, storageType, orgName, orgName, networkDir))
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err = cmd.Run()
 	if err != nil {
+		fmt.Println(fmt.Sprint(err) + ": " + stderr.String())
 		return err
 	}
+	fmt.Println("Result: " + out.String())
+	// out,err :=cmd.Output()
+	// if err != nil {
+	// 	fmt.Println("An error occured inside the envelope creation."+ cmd.String())
+	// 	return err
+	// }
 	// Required Step
 
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-v", fmt.Sprintf("%s/enabler/config1.json:/etc/enabler/config1.json", networkDir), "-v", fmt.Sprintf("%s/enabler/modified_config.json:/etc/enabler/modified_config.json", networkDir), "hyperledger/fabric-tools:2.3",
@@ -585,25 +603,25 @@ func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-v", fmt.Sprintf("%s/enabler/config1.json:/etc/enabler/config1.json", networkDir), "-v", fmt.Sprintf("%s/enabler/modified_config.json:/etc/enabler/modified_config.json", networkDir), "hyperledger/fabric-tools:2.3",
 		"configtxlator", "compute_update", "--channel_id", channelName, "--original", "/etc/enabler/config1.pb", "--updated", "/etc/enabler/modified_config.pb", "--output", fmt.Sprintf("/etc/enabler/%s_update.pb", orgName))
 	// Required Step
-	out, err = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxlator proto_decode --input /etc/enabler/%s_update.pb --type common.ConfigUpdate | jq . > %s/enabler/%s_update.json", f.Enabler.NetworkName, storageType, orgName, networkDir, orgName)).Output()
+	out1, err := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxlator proto_decode --input /etc/enabler/%s_update.pb --type common.ConfigUpdate | jq . > %s/enabler/%s_update.json", f.Enabler.NetworkName, storageType, orgName, networkDir, orgName)).Output()
 
 	// Required Step
 
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 echo '{\"payload\":{\"header\":{\"channel_header\":{\"channel_id\":\"%s\", \"type\":2}},\"data\":{\"config_update\":'$(cat /%s/enabler/%s_update.json)'}}}'| jq . > %s/enabler/%s_update_in_envelope.json", f.Enabler.NetworkName, storageType, channelName, networkDir, orgName, networkDir, orgName))
+	cmd = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 echo '{\"payload\":{\"header\":{\"channel_header\":{\"channel_id\":\"%s\", \"type\":2}},\"data\":{\"config_update\":'$(cat /%s/enabler/%s_update.json)'}}}'| jq . > %s/enabler/%s_update_in_envelope.json", f.Enabler.NetworkName, storageType, channelName, networkDir, orgName, networkDir, orgName))
 
 	fmt.Printf("%s", cmd.String())
-	out, err = cmd.Output()
+	out1, err = cmd.Output()
 	if err != nil {
 		return err
 	}
-	fmt.Printf(" Printng out %s\n", out)
+	fmt.Printf(" Printng out %s\n", out1)
 
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-v", fmt.Sprintf("%s/enabler/%s_update_in_envelope.json:/etc/enabler/%s_update_in_envelope.json", networkDir, orgName, orgName), "hyperledger/fabric-tools:2.3",
 		"configtxlator", "proto_encode", "--input", fmt.Sprintf("/etc/enabler/%s_update_in_envelope.json", orgName), "--type", "common.Envelope", "--output", fmt.Sprintf("/etc/enabler/%s_update_in_envelope.pb", orgName))
 
 	// copying  the output .pb file into the directory.
-	docker.CopyFromContainer(fmt.Sprintf("%s", peerID), fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName), fmt.Sprintf("%s/tlsca.%s-cert.pem", path.Join(constants.EnablerDir, userId, networkId, "enabler"), f.Enabler.Members[0].DomainName), verbose)
-	docker.CopyFromContainer(fmt.Sprintf("%s", peerID), fmt.Sprintf("/etc/enabler/%s_update_in_envelope.pb", orgName), fmt.Sprintf("%s/enabler/%s_update_in_envelope.pb", networkDir, orgName), verbose)
+	// docker.CopyFromContainer(fmt.Sprintf("%s", peerID), fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName), fmt.Sprintf("%s/tlsca.%s-cert.pem", path.Join(constants.EnablerDir, userId, networkId, "enabler"), f.Enabler.Members[0].DomainName), verbose)
+	// docker.CopyFromContainer(fmt.Sprintf("%s", peerID), fmt.Sprintf("/etc/enabler/%s_update_in_envelope.pb", orgName), fmt.Sprintf("%s/enabler/%s_update_in_envelope.pb", networkDir, orgName), verbose)
 	// copying  the output .pb file into the directory.
 	// docker.CopyFromContainer(fmt.Sprintf("%s_fabric_peer", f.Enabler.NetworkName), "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem", fmt.Sprintf("%s/tlsca.example.com-cert.pem", enablerPath), verbose)
 	// docker.CopyFromContainer(fmt.Sprintf("%s_fabric_peer", f.Enabler.NetworkName), fmt.Sprintf("/etc/enabler/%s_update_in_envelope.pb", orgName), fmt.Sprintf("%s/enabler/%s_update_in_envelope.pb", networkDir, orgName), verbose)
