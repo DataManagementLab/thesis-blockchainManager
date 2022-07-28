@@ -52,7 +52,7 @@ type DockerComposeConfig struct {
 
 func CreateDockerCompose() *DockerComposeConfig {
 	compose := &DockerComposeConfig{
-		Version:  "2.1",
+		Version:  "3.1",
 		Services: make(map[string]*Service),
 		Volumes:  make(map[string]struct{}),
 		Networks: make(map[string]*DockerNetwork),
