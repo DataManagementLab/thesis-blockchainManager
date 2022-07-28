@@ -844,6 +844,7 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool)
 	fmt.Printf(" %s\n", cmd)
 	out, err := cmd.Output()
 	if err != nil {
+		fmt.Println("Error occured while creating the definition file")
 		return err
 	}
 
