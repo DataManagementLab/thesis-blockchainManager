@@ -341,8 +341,7 @@ func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string) (e
 	pathUser := filepath.Join(enablerPath, zipFileSplit[0])
 
 	// convert or transform this file specified in the path above
-	// f.transformDefinitionFile(file, orgName, userid)
-
+	
 	// here it needs to copy the zip file unpack it load it into another folder and use the information provided in that folder -> read the network_config.json file.
 	f.unzipFile(zipfile, userid, zipFileSplit[0])
 	networkConfig := f.loadNetworkConfig(fmt.Sprintf("%s", filepath.Join(pathUser, "network_config.json")), userid)
@@ -357,8 +356,13 @@ func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string) (e
 		f.transformDefinitionFile(filepath.Join(pathUser, fmt.Sprintf("%s.json", orgName)), orgName, userid)
 		// Now use this file from that location,
 		// add the signature, from multiple parties -> for thia just need to use the sign command & update command.
-		f.envelopeBlockCreation(userid, networkId, orgName)
-		f.signConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName))
+
+		if err := f.envelopeBlockCreation(userid, networkId, orgName); err != nil {
+			return err
+		}
+		if err := f.signConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName)); err != nil {
+			return err
+		}
 		ownBlockchainDefinition = &ownNetworkConfig.BlockchainDefinition
 		ownNetworkDetails, ok := ownBlockchainDefinition.(*types.FabricDefinition)
 		if ok {
@@ -371,7 +375,9 @@ func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string) (e
 				// fmt.Printf("Need to use the sign command to send the zip file %s_sign_transfer.zip to %v", orgName, &ownNetworkDetails.NetworkMembers)
 			} else {
 				channelName := f.Enabler.Members[0].ChannelName
-				f.signAndUpdateConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName), channelName)
+				if err := f.signAndUpdateConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName), channelName); err != nil {
+					return err
+				}
 				ownNetworkDetails.NetworkMembers = append(ownNetworkDetails.NetworkMembers, &orgName)
 
 				netConfig := types.NetworkConfig{
@@ -385,6 +391,7 @@ func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string) (e
 				err = writeNetworkConfig(userid, ownNetworkConfig.NetworkName, content)
 				if err != nil {
 					fmt.Println(err)
+					return err
 				}
 				// write network config.
 			}
@@ -454,16 +461,8 @@ func (f *FabricDefinition) Sign(userid string, useVolume bool, zipfile string, u
 		networkName = networkConfig.NetworkName
 		ordererName = networkDetails.OrganizationInfo.OrdererName
 		cafile = fmt.Sprintf("%s_tlsca.example.com-cert.pem", networkName)
-		// orgName = networkDetails.OrganizationInfo.OrganizationName
 		transformFile(filepath.Join(signPath, cafile), filepath.Join(enablerPath, cafile))
-		// 	participatingOrgs := networkDetails.NetworkMembers
-		// 	fmt.Printf("%v", participatingOrgs)
-
-		// 	// load the json file signed_envelope.json
-
-		// 	loadSignedEnvelope(signedEnvelopePath)
 	}
-	// transformFile()
 	if !update {
 		f.signConfig(fmt.Sprintf(envelopeName[0]))
 		createZipForSign(enablerPath, fmt.Sprintf(envelopeName[0]), fmt.Sprintf("signed_%s.json", envelopeNameWithoutExt), filepath.Join(signPath, "network_config.json"), cafile, zipFileSplit[0], networkName)
@@ -471,25 +470,11 @@ func (f *FabricDefinition) Sign(userid string, useVolume bool, zipfile string, u
 	} else {
 
 		fmt.Println("Sign and update called ")
-		f.signAndUpdateConfigMultipleParticipants(fmt.Sprintf(envelopeName[0]), channelName, networkName, ordererName, cafile)
+		if err := f.signAndUpdateConfigMultipleParticipants(fmt.Sprintf(envelopeName[0]), channelName, networkName, ordererName, cafile); err != nil {
+			return err
+		}
 
 	}
-	// var blockchaindefinition interface{}
-	// enablerPath := filepath.Join(constants.EnablerDir, userid, f.Enabler.NetworkName, "enabler")
-	// pathUser := filepath.Join(enablerPath, "sign")
-	// networkConfig := f.loadNetworkConfig(fmt.Sprintf("%s", filepath.Join(pathUser, "network_config.json")), userid)
-	// // next load this file
-	// blockchaindefinition = &networkConfig.BlockchainDefinition
-	// networkDetails, ok := blockchaindefinition.(*types.FabricDefinition)
-	// signedEnvelopePath := filepath.Join(pathUser, "signed_envelope.json")
-	// if ok {
-	// 	participatingOrgs := networkDetails.NetworkMembers
-	// 	fmt.Printf("%v", participatingOrgs)
-
-	// 	// load the json file signed_envelope.json
-
-	// 	loadSignedEnvelope(signedEnvelopePath)
-	// }
 
 	// now try to load the signature
 
@@ -1502,10 +1487,10 @@ func (f *FabricDefinition) generateGenesisBlock(userId string, useVolume bool) (
 			//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
 			return err
 		}
-		if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", enablerDirectory), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(blockchainDirectory, "configtx.yaml")), "hyperledger/fabric-tools:2.3", "configtxgen", "-outputCreateChannelTx", "/etc/enabler/enabler.tx", "-profile", "SingleOrgApplicationGenesis", "-channelID", channelName); err != nil {
-			//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
-			return err
-		}
+		// if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", enablerDirectory), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(blockchainDirectory, "configtx.yaml")), "hyperledger/fabric-tools:2.3", "configtxgen", "-outputCreateChannelTx", "/etc/enabler/enabler.tx", "-profile", "SingleOrgApplicationGenesis", "-channelID", channelName); err != nil {
+		// 	//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
+		// 	return err
+		// }
 	} else {
 		if err := docker.RunDockerCommand(blockchainDirectory, verbose, verbose, "run", "--rm", "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s:/etc/hyperledger/fabric/configtx.yaml", path.Join(blockchainDirectory, "configtx.yaml")), "hyperledger/fabric-tools:2.3", "configtxgen", "-outputBlock", "/etc/enabler/enabler.block", "-profile", "SingleOrgApplicationGenesis", "-channelID", channelName); err != nil {
 			//  "-outputCreateChannelTx", "create_chan_tx.pb", "-printOrg", "Org1",
