@@ -322,7 +322,7 @@ func (f *FabricDefinition) Join(networkId string, orgName string, userid string,
 	// Once volume is done then create the crypto files using crypto command.
 	return nil
 }
-func (f *FabricDefinition) Leave(networkId string, orgName string, userId string, useVolume bool, finalize bool) error {
+func (f *FabricDefinition) Leave(networkId string, userId string, useVolume bool, finalize bool) error {
 	userIdentification = userId
 	verbose = true
 	f.UseVolume = useVolume

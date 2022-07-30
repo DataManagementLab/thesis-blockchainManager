@@ -183,11 +183,11 @@ func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, 
 	return nil
 }
 
-func (em *EnablerPlatformManager) LeaveNetwork(networkId string, orgName string, useVolume bool, finalize bool) error {
+func (em *EnablerPlatformManager) LeaveNetwork(networkId string,  useVolume bool, finalize bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
-			return network.InterfaceProvider.Leave(networkId, orgName, em.UserId, useVolume, finalize)
+			return network.InterfaceProvider.Leave(networkId,  em.UserId, useVolume, finalize)
 
 		}
 	}

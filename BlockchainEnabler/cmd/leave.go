@@ -24,7 +24,6 @@ import (
 
 var leavePlatformEnabler *enablerplatform.EnablerPlatformManager
 
-var orgID string
 var networkName string
 var userID string
 var finalize bool
@@ -41,7 +40,7 @@ var leaveCmd = &cobra.Command{
 		leavePlatformEnabler.LoadUser("", userID)
 		// logger.Printf(joinPlatformManager.UserId)
 		
-		leavePlatformEnabler.LeaveNetwork(networkName, orgID,useVolume,finalize)
+		leavePlatformEnabler.LeaveNetwork(networkName, useVolume,finalize)
 	},
 }
 
@@ -49,7 +48,6 @@ func init() {
 	rootCmd.AddCommand(leaveCmd)
 	leaveCmd.Flags().StringVarP(&userID, "userId", "u", "", "The User ID for the user.")
 
-	leaveCmd.Flags().StringVarP(&orgID, "orgName", "o", "", "The organization name which wants to leave the channel.")
 	leaveCmd.Flags().StringVarP(&networkName, "networkName", "n", "", "The Network the organization which wants to leave")
 	leaveCmd.Flags().BoolVarP(&finalize, "finalize", "p", false, "The final step of leave need to be run by the other org.")
 
