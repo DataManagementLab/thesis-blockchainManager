@@ -172,10 +172,10 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, useVolume bool, invitePhase bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			
-				// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-				return network.InterfaceProvider.Join(networkId, orgName, em.UserId, useVolume, invitePhase)
-			
+
+			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
+			return network.InterfaceProvider.Join(networkId, orgName, em.UserId, useVolume, invitePhase)
+
 		}
 	}
 
