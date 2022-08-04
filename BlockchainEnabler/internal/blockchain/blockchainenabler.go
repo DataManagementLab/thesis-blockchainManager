@@ -5,6 +5,9 @@ type IProvider interface {
 	Create(string, bool, bool, bool, string) error
 	Join(string, string, string, bool, bool) error
 	Leave(string, string, string, bool, bool) error
+	Invite(string, string, string, bool) error
+	Accept(string, string, string, bool) error
+
 	// WriteConfigs() error
 	// GetDockerServiceDefinitions() []*docker.ServiceDefinition
 
