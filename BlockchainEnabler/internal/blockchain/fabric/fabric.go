@@ -287,6 +287,7 @@ func (f *FabricDefinition) Invite(networkId string, orgName string, userid strin
 	f.UseVolume = useVolume
 	f.Deployer = getDeployerInstance(f.DeployerType)
 	f.fetchConfigBlock(userid)
+
 	// convert or transform this file specified in the path above
 	f.transformDefinitionFile(file, orgName, userid)
 	f.envelopeBlockCreation(userid, networkId, orgName)
@@ -852,6 +853,9 @@ func (f *FabricDefinition) fetchChannelGenesisBlock(externalNetwork string) erro
 	volumeName := fmt.Sprintf("%s_fabric", f.Enabler.NetworkName)
 	enablerPath := path.Join(networkDir, "enabler")
 	channelName := f.Enabler.Members[0].ChannelName
+
+	cafile := fmt.Sprintf("organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName)
+
 	if f.UseVolume {
 		storageType = volumeName
 
@@ -860,12 +864,57 @@ func (f *FabricDefinition) fetchChannelGenesisBlock(externalNetwork string) erro
 	}
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", network), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
 		fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", f.Enabler.Members[0].OrgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3",
-		"peer", "channel", "fetch", "0", "/etc/enabler/channel_genesis_block.block", "-c", channelName, "-o", fmt.Sprintf("%s:7050", f.Enabler.Members[0].OrdererName), "--tls", "--cafile", fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName))
+		"peer", "channel", "fetch", "0", fmt.Sprintf("/etc/enabler/channel_genesis_block_%s.block", channelName), "-c", channelName, "-o", fmt.Sprintf("%s:7050", f.Enabler.Members[0].OrdererName), "--tls", "--cafile", fmt.Sprintf("/etc/enabler/%s", cafile))
 
 	// copy the file channel_genesis_block.block to the another org
 
+	// Here we create the zip file which would be needed for the join, This can be done by creating the zip archive with the genesis block and the cafile together in a zip formaat.
+
+	createZipForTransfer(enablerPath, fmt.Sprintf("channel_genesis_block_%s.block", channelName), cafile)
+
 	// docker.CopyFromContainer(peerID, "/etc/enabler/channel_genesis_block.block", fmt.Sprintf("%s/enabler/channel_genesis_block.block", networkDir), verbose)
 	return nil
+}
+
+func createZipForTransfer(enablerPath string, genesisFile string, cafile string) {
+	archive, err := os.Create(path.Join(enablerPath, "transfer.zip"))
+	if err != nil {
+		panic(err)
+	}
+
+	defer archive.Close()
+
+	zipWriter := zip.NewWriter(archive)
+
+	f1, err := os.Open(path.Join(enablerPath, genesisFile))
+	if err != nil {
+		panic(err)
+	}
+	defer f1.Close()
+
+	w1, err := zipWriter.Create("channel_genesis.block")
+	if err != nil {
+		panic(err)
+	}
+	if _, err := io.Copy(w1, f1); err != nil {
+		panic(err)
+	}
+
+	f2, err := os.Open(path.Join(enablerPath, cafile))
+	if err != nil {
+		panic(err)
+	}
+	defer f2.Close()
+
+	w2, err := zipWriter.Create("tlsca.example.com-cert.pem")
+	if err != nil {
+		panic(err)
+	}
+	if _, err := io.Copy(w2, f2); err != nil {
+		panic(err)
+	}
+	zipWriter.Close()
+
 }
 func (f *FabricDefinition) loadGenesisFileToOrg(networkId string) error {
 	networkDir := path.Join(constants.EnablerDir, userIdentification, f.Enabler.NetworkName)
