@@ -42,7 +42,7 @@ to quickly create a Cobra application.`,
 		// it needs to load in the basic file from the directory and initialize it with the values for the network.
 		// We need to then check which kind of network it is and then we would call the network functions(objects).
 		deletePlatformManager.LoadUser(networkId, userId)
-		deletePlatformManager.DeleteNetwork()
+		deletePlatformManager.DeleteNetwork(userLogging)
 	},
 }
 

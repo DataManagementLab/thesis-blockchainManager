@@ -100,6 +100,7 @@ var initCmd = &cobra.Command{
 			}
 		}
 		initOptions.BlockchainType, _ = types.BlockchainProviderSelection(selectedBlockchain)
+		initOptions.UserLogging = userLogging
 		platformManager = enablerplatform.GetInstance(&logger)
 		//  Initialization of the User Network.
 		// Initilization of all the components needed to run, which involves the creation of the docker yaml file and other stuff.
@@ -107,7 +108,7 @@ var initCmd = &cobra.Command{
 		if err := platformManager.InitEnablerPlatform(userId, memberCount, &initOptions, localSetup); err != nil {
 			return nil
 		}
-		fmt.Printf("\n\nThe user '%s' has been Successfully initialized. To create the network, run:\n\n go run main.go create -u %s\n\n", userId, userId)
+		// fmt.Printf("\n\nThe user '%s' has been Successfully initialized. To create the network, run:\n\n go run main.go create -u %s\n\n", userId, userId)
 		return nil
 	},
 }

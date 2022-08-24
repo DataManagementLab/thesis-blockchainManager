@@ -48,7 +48,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 		// Creates the network for the given User
-		if err := createPlatformManager.CreateNetwork(useVolume); err != nil {
+		if err := createPlatformManager.CreateNetwork(useVolume,userLogging); err != nil {
 			return err
 		}
 

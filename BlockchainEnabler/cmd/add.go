@@ -49,7 +49,7 @@ to quickly create a Cobra application.`,
 		
 		// fmt.Printf("\n\n Adding the  '%s' for user '%s' has been Successfully created.\n", createPlatformManager.Enablers[0].NetworkName, userId)
 
-		if err := invitePlatformManager.AddOrganization(useVolume, file); err != nil {
+		if err := invitePlatformManager.AddOrganization(useVolume, file,userLogging); err != nil {
 			return err
 		}
 		

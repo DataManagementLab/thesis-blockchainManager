@@ -203,23 +203,26 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 	return serviceDefinitions, nil
 }
 
-func (fabDocker *FabricDocker) Deploy(workingDir string) error {
+func (fabDocker *FabricDocker) Deploy(workingDir string, logging bool) error {
 	// Needs to now run the docker containers this can be done using the docker compose file
 	// fmt.Printf("Working Directory for docker %s", workingDir)
-
-	err := docker.RunDockerComposeCommand(workingDir, true, true, "up", "-d")
+	fmt.Println("Deploying Containers . . . ")
+	err := docker.RunDockerComposeCommand(workingDir, logging, logging, "up", "-d")
 	if err != nil {
 		return err
 	}
+	fmt.Println("Containers Deployed !")
 	return nil
 }
 
-func (fabDocker *FabricDocker) Terminate(workingDir string) error {
-
-	err := docker.RunDockerComposeCommand(workingDir, true, true, "down", "-v")
+func (fabDocker *FabricDocker) Terminate(workingDir string, logging bool) error {
+	fmt.Println("Removing the resources and containers . . .")
+	err := docker.RunDockerComposeCommand(workingDir, logging, logging, "down", "-v")
+	// call then the network prune and the volume prune.
 	if err != nil {
 		return err
 	}
+	fmt.Println("Resources Cleared !")
 	return nil
 }
 

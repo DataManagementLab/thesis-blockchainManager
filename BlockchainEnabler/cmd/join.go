@@ -54,7 +54,7 @@ to quickly create a Cobra application.`,
 			return err
 		}
 		// logger.Printf(invitePlatformManager.UserId)
-		if err := joinPlatformManager.JoinNetwork(useVolume, zipFile, basic); err != nil {
+		if err := joinPlatformManager.JoinNetwork(useVolume, zipFile, basic,userLogging); err != nil {
 			return err
 		}
 		return nil

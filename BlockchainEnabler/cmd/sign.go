@@ -41,7 +41,7 @@ to quickly create a Cobra application.`,
 		signPlatformManager = enablerplatform.GetInstance(&logger)
 		signPlatformManager.LoadUser("", userId)
 		// logger.Printf(invitePlatformManager.UserId)
-		signPlatformManager.SignOrganization(useVolume, file,update)
+		signPlatformManager.SignOrganization(useVolume, file,update,userLogging)
 	},
 }
 
