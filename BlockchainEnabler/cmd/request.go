@@ -16,10 +16,14 @@ limitations under the License.
 package cmd
 
 import (
+	"BlockchainEnabler/BlockchainEnabler/internal/enablerplatform"
 	"fmt"
 
 	"github.com/spf13/cobra"
 )
+
+var orgFilePath string
+var requestPlatformManager *enablerplatform.EnablerPlatformManager
 
 // requestCmd represents the request command
 var requestCmd = &cobra.Command{
@@ -33,11 +37,22 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("request called")
+
+		requestPlatformManager = enablerplatform.GetInstance(&logger)
+		requestPlatformManager.LoadUser("", userId)
+		fmt.Println("Value of use Volume", useVolume)
+		// joinPlatformManager.Options.UseVolume = useVolume
+
+		logger.Printf(requestPlatformManager.UserId)
+		requestPlatformManager.JoinNetwork(networkId, orgName, useVolume,invite)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(requestCmd)
+	requestCmd.Flags().StringVarP(&orgName, "orgName", "o", "", "The organization name which wants to join the network.")
+	requestCmd.Flags().StringVarP(&networkId, "networkId", "n", "", "The Network the organization which wants to join another network.")
+	requestCmd.Flags().StringVarP(&orgFilePath, "file", "f", "", "Pass the file path in case of fabric the path to the definition file.")
 
 	// Here you will define your flags and configuration settings.
 

@@ -23,6 +23,7 @@ import (
 )
 
 var acceptPlatformManager *enablerplatform.EnablerPlatformManager
+var zipFile string
 
 // acceptCmd represents the accept command
 var acceptCmd = &cobra.Command{
@@ -40,7 +41,7 @@ to quickly create a Cobra application.`,
 		acceptPlatformManager = enablerplatform.GetInstance(&logger)
 		acceptPlatformManager.LoadUser("", userId)
 		// logger.Printf(invitePlatformManager.UserId)
-		acceptPlatformManager.AcceptNetwork(networkId, orgName, useVolume)
+		acceptPlatformManager.AcceptNetwork(networkId, orgName, useVolume, zipFile)
 	},
 }
 
@@ -50,6 +51,7 @@ func init() {
 
 	acceptCmd.Flags().StringVarP(&orgName, "orgName", "o", "", "The organization name which wants to join the network.")
 	acceptCmd.Flags().StringVarP(&networkId, "networkId", "n", "", "The Network the organization which wants to join another network.")
+	acceptCmd.Flags().StringVarP(&zipFile, "zipFile", "z", "", "The zip of the files needed.")
 
 	// Here you will define your flags and configuration settings.
 

@@ -23,6 +23,8 @@ import (
 )
 
 var invitePlatformManager *enablerplatform.EnablerPlatformManager
+var file string
+var ordererInfo string
 
 // inviteCmd represents the invite command
 var inviteCmd = &cobra.Command{
@@ -40,9 +42,11 @@ to quickly create a Cobra application.`,
 		invitePlatformManager = enablerplatform.GetInstance(&logger)
 		invitePlatformManager.LoadUser("", userId)
 		// logger.Printf(invitePlatformManager.UserId)
-		invitePlatformManager.InviteOrganization(networkId, orgName, useVolume)
+		invitePlatformManager.InviteOrganization(networkId, orgName, useVolume, file)
 	},
 }
+
+// ALSO INSIDE THE INVITE command we need something which would create the sign and update part.
 
 func init() {
 	rootCmd.AddCommand(inviteCmd)
@@ -50,6 +54,8 @@ func init() {
 
 	inviteCmd.Flags().StringVarP(&orgName, "orgName", "o", "", "The organization name which wants to join the network.")
 	inviteCmd.Flags().StringVarP(&networkId, "networkId", "n", "", "The Network the organization which wants to join another network.")
+	inviteCmd.Flags().StringVarP(&file, "file", "f", "", "file containing the relevant information.")
+	// inviteCmd.Flags().StringVarP(&ordererInfo, "orderercaFile", "c", "", "Pass the orderer ca file only needed in fabric")
 
 	// Here you will define your flags and configuration settings.
 

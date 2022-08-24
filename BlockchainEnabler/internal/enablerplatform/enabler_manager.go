@@ -169,12 +169,12 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) InviteOrganization(networkId string, orgName string, useVolume bool) error {
+func (em *EnablerPlatformManager) InviteOrganization(networkId string, orgName string, useVolume bool, file string) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Invite(networkId, orgName, em.UserId, useVolume)
+			return network.InterfaceProvider.Invite(networkId, orgName, em.UserId, useVolume, file)
 
 		}
 	}
@@ -183,12 +183,12 @@ func (em *EnablerPlatformManager) InviteOrganization(networkId string, orgName s
 	return nil
 }
 
-func (em *EnablerPlatformManager) AcceptNetwork(networkId string, orgName string, useVolume bool) error {
+func (em *EnablerPlatformManager) AcceptNetwork(networkId string, orgName string, useVolume bool, zipFile string) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Accept(networkId, orgName, em.UserId, useVolume)
+			return network.InterfaceProvider.Accept(networkId, orgName, em.UserId, useVolume, zipFile)
 
 		}
 	}
@@ -203,6 +203,20 @@ func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, 
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
 			return network.InterfaceProvider.Join(networkId, orgName, em.UserId, useVolume, invitePhase)
+
+		}
+	}
+
+	// currently will just create a demo netowk and try to join using that network.
+	return nil
+}
+
+func (em *EnablerPlatformManager) RequestNetwork(networkId string, orgName string, useVolume bool, file string) error {
+	if em.Enablers != nil {
+		for _, network := range em.Enablers {
+
+			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
+			return network.InterfaceProvider.Request(networkId, orgName, em.UserId, useVolume, file)
 
 		}
 	}

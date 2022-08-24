@@ -4,14 +4,18 @@ import (
 	"BlockchainEnabler/BlockchainEnabler/internal/constants"
 	"BlockchainEnabler/BlockchainEnabler/internal/deployer/docker"
 	"BlockchainEnabler/BlockchainEnabler/internal/types"
+	"archive/zip"
 	"bytes"
 	_ "embed"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
@@ -277,27 +281,150 @@ func (f *FabricDefinition) Create(userId string, useSDK bool, useVolume bool, ba
 	// Currently i am planning to use the functions the docker code from the firefly cli seems quite nice way of handling things.
 	return nil
 }
-func (f *FabricDefinition) Invite(networkId string, orgName string, userid string, useVolume bool) (err error) {
+func (f *FabricDefinition) Invite(networkId string, orgName string, userid string, useVolume bool, file string) (err error) {
 	userIdentification = userid
 	verbose = true
 	f.UseVolume = useVolume
 	f.Deployer = getDeployerInstance(f.DeployerType)
 	f.fetchConfigBlock(userid)
-
+	// convert or transform this file specified in the path above
+	f.transformDefinitionFile(file, orgName, userid)
 	f.envelopeBlockCreation(userid, networkId, orgName)
 	f.signConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName))
 	f.signAndUpdateConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName))
 	return nil
 }
 
-func (f *FabricDefinition) Accept(networkId string, orgName string, userid string, useVolume bool) (err error) {
+func (f *FabricDefinition) transformDefinitionFile(file string, orgName string, userId string) {
+	enablerPath := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
+	dstPath := path.Join(enablerPath, fmt.Sprintf("%s.json", orgName))
+	transformFile(file, dstPath)
+
+}
+
+func transformFile(sourcePath string, dstPath string) {
+	data, err := ioutil.ReadFile(sourcePath)
+	if err != nil {
+		log.Fatalf("failed reading file: %s", err)
+	}
+	fileData, err := os.Create(dstPath)
+
+	if err != nil {
+		log.Fatalf("failed creating file: %s", err)
+	}
+	defer fileData.Close()
+
+	_, err = fileData.Write(data)
+	if err != nil {
+		log.Fatalf("failed writing to file: %s", err)
+	}
+}
+
+func (f *FabricDefinition) Accept(networkId string, orgName string, userid string, useVolume bool, zipFile string) (err error) {
 	userIdentification = userid
 	verbose = true
 	f.UseVolume = useVolume
 	f.Deployer = getDeployerInstance(f.DeployerType)
+	f.unzipFile(zipFile, userid)
 	f.joinOtherOrgPeerToChannel(userid, networkId, orgName)
 	f.createAnchorPeer(userid, networkId, orgName)
 	return nil
+}
+
+func (f *FabricDefinition) unzipFile(zipFile string, userId string) {
+	dst := "zipoutput"
+	enablerPath := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
+
+	ziparchve, err := zip.OpenReader(zipFile)
+	if err != nil {
+		panic(err)
+	}
+	defer ziparchve.Close()
+	for _, f := range ziparchve.File {
+		fileLocation := path.Join(enablerPath, dst)
+		if !strings.HasPrefix(fileLocation, filepath.Clean(dst)+string(os.PathSeparator)) {
+			fmt.Println("invalid file path")
+			return
+		}
+		if f.FileInfo().IsDir() {
+			fmt.Println("creating directory...")
+			os.MkdirAll(fileLocation, os.ModePerm)
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(fileLocation), os.ModePerm); err != nil {
+			panic(err)
+		}
+
+		dstFile, err := os.OpenFile(fileLocation, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+
+		if err != nil {
+			panic(err)
+		}
+		defer dstFile.Close()
+		zippedFile, err := f.Open()
+		if err != nil {
+			panic(err)
+		}
+		defer zippedFile.Close()
+		if _, err := io.Copy(dstFile, zippedFile); err != nil {
+			panic(err)
+		}
+		if "block" == filepath.Ext(dstFile.Name()) {
+			srcPath := path.Join(fileLocation, dstFile.Name())
+			dstPath := path.Join(enablerPath, fmt.Sprintf("channel_genesis.block"))
+
+			transformFile(srcPath, dstPath)
+		} else {
+			srcPath := path.Join(fileLocation, dstFile.Name())
+			dstPath := path.Join(enablerPath, fmt.Sprintf("tlsca.example.com-cert.pem"))
+			transformFile(srcPath, dstPath)
+		}
+
+		// return nil
+	}
+
+	//  unzip the file first in a folder and then copy it to the required directory, also check if nothing is missing or not.
+}
+
+func (f *FabricDefinition) Request(networkId string, orgName string, userid string, useVolume bool, file string) (err error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:9090")
+	if err != nil {
+		log.Fatal(err)
+
+	}
+	log.Println("Server listening on: " + listener.Addr().String())
+	done := make(chan struct{})
+	go func() {
+		defer func() { done <- struct{}{} }()
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			go func(c net.Conn) {
+				defer func() {
+					c.Close()
+					done <- struct{}{}
+				}()
+				buf := make([]byte, 1024)
+				for {
+					n, err := c.Read(buf)
+					if err != nil {
+						if err != io.EOF {
+							log.Println(err)
+						}
+						return
+					}
+					log.Printf("received: %q", buf[:n])
+					log.Printf("bytes: %d", n)
+				}
+			}(conn)
+		}
+	}()
+
+	return nil
+
 }
 func (f *FabricDefinition) Join(networkId string, orgName string, userid string, useVolume bool, invitePhase bool) (err error) {
 	// Starting step would be to check if the network is already present and if so then it would kind of load the network.(Dont exactly know how it should load the network)
