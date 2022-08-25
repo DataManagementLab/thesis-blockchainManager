@@ -340,9 +340,16 @@ func (f *FabricDefinition) unzipFile(zipFile string, userId string) {
 	if err != nil {
 		panic(err)
 	}
+	dst, err = filepath.Abs(path.Join(enablerPath, dst))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("dst :", dst)
+
+	// fmt.Println(" file path",zipFile)
 	defer ziparchve.Close()
 	for _, f := range ziparchve.File {
-		fileLocation := path.Join(enablerPath, dst)
+		fileLocation := path.Join(dst, f.Name)
 		if !strings.HasPrefix(fileLocation, filepath.Clean(dst)+string(os.PathSeparator)) {
 			fmt.Println("invalid file path")
 			return
@@ -370,15 +377,15 @@ func (f *FabricDefinition) unzipFile(zipFile string, userId string) {
 		if _, err := io.Copy(dstFile, zippedFile); err != nil {
 			panic(err)
 		}
-		if "block" == filepath.Ext(dstFile.Name()) {
-			srcPath := path.Join(fileLocation, dstFile.Name())
+		if ".block" == filepath.Ext(dstFile.Name()) {
 			dstPath := path.Join(enablerPath, fmt.Sprintf("channel_genesis.block"))
-
-			transformFile(srcPath, dstPath)
-		} else {
-			srcPath := path.Join(fileLocation, dstFile.Name())
+			transformFile(fileLocation, dstPath)
+		} else if ".pem" == filepath.Ext(dstFile.Name()) {
 			dstPath := path.Join(enablerPath, fmt.Sprintf("tlsca.example.com-cert.pem"))
-			transformFile(srcPath, dstPath)
+			transformFile(fileLocation, dstPath)
+		} else {
+			dstPath := path.Join(enablerPath, dstFile.Name())
+			transformFile(fileLocation, dstPath)
 		}
 
 		// return nil
@@ -1051,7 +1058,7 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool)
 	fmt.Printf(" %s\n", cmd)
 	out, err := cmd.Output()
 	if err != nil {
-		fmt.Println("Error occured while creating the definition file")
+		fmt.Println("Error occured while creating the definition file",err)
 		return err
 	}
 
