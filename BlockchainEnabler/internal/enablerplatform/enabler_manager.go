@@ -72,6 +72,10 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	}
 
 	e.InterfaceProvider = em.getBlockchainProvider(e)
+	if err := em.writeNetworkConfig(e); err != nil {
+		return err
+	}
+
 	//  create a function which checks the ports and pass this function to the init.
 	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume, initOptions.BasicSetup); err != nil {
 		return err
@@ -83,10 +87,10 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
-func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, basicSetup bool, externalNetwork string) {
+func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, externalNetwork string) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, false, useVolume, basicSetup, externalNetwork)
+			network.InterfaceProvider.Create(em.UserId, false, useVolume, externalNetwork)
 		}
 	}
 	// Things to do here
@@ -94,12 +98,42 @@ func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, basicSetup bool,
 	// 1. calling the function for the blockchain network create.
 }
 
-func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool, basicSetup bool, externalNetwork string) {
+func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool, externalNetwork string) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, true, false, basicSetup, externalNetwork)
+			network.InterfaceProvider.Create(em.UserId, true, false, externalNetwork)
 		}
 	}
+}
+
+func (em *EnablerPlatformManager) writeNetworkConfig(enabler *types.Network) (err error) {
+	orgDefinition := types.OrganizationDefinition{
+		OrganizationName: enabler.Members[0].OrgName,
+		ChannelName:      enabler.Members[0].ChannelName,
+		OrdererName:      enabler.Members[0].OrdererName,
+	}
+	// organizationList := append([]*types.OrganizationDefinition{}, &orgDefinition)
+	networkMembers := append([]*string{}, &enabler.Members[0].OrgName)
+
+	fabricDefinition := types.FabricDefinition{
+		BlockchainType:   enabler.BlockchainProvider,
+		OrganizationInfo: orgDefinition,
+		NetworkMembers:   networkMembers,
+	}
+
+	networkConfig := types.NetworkConfig{
+		NetworkName:          enabler.NetworkName,
+		BlockchainDefinition: fabricDefinition,
+	}
+
+	platformConfigBytes, err := json.MarshalIndent(networkConfig, "", " ")
+	if err != nil {
+		fmt.Println(err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(constants.EnablerDir, em.UserId, networkConfig.NetworkName, "enabler", fmt.Sprintf("network_config.json")), platformConfigBytes, 0755); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (em *EnablerPlatformManager) writePlatformInfo(enabler *types.Network) (err error) {
@@ -159,6 +193,9 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	if err := os.MkdirAll(filepath.Join(enablerDir, "enabler"), 0755); err != nil {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Join(enablerDir, "enabler", "chaincode"), 0755); err != nil {
+		return err
+	}
 
 	for _, member := range s.Members {
 
@@ -169,12 +206,12 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) InviteOrganization(networkId string, orgName string, useVolume bool, file string) error {
+func (em *EnablerPlatformManager) InviteOrganization(useVolume bool, file string) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Invite(networkId, orgName, em.UserId, useVolume, file)
+			return network.InterfaceProvider.Invite(em.UserId, useVolume, file)
 
 		}
 	}
@@ -183,12 +220,12 @@ func (em *EnablerPlatformManager) InviteOrganization(networkId string, orgName s
 	return nil
 }
 
-func (em *EnablerPlatformManager) AcceptNetwork(networkId string, orgName string, useVolume bool, zipFile string) error {
+func (em *EnablerPlatformManager) AcceptNetwork(useVolume bool, zipFile string, basicSetup bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Accept(networkId, orgName, em.UserId, useVolume, zipFile)
+			return network.InterfaceProvider.Accept(em.UserId, useVolume, zipFile, basicSetup)
 
 		}
 	}

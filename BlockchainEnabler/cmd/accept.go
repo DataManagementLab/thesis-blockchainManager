@@ -24,6 +24,7 @@ import (
 
 var acceptPlatformManager *enablerplatform.EnablerPlatformManager
 var zipFile string
+var basic bool
 
 // acceptCmd represents the accept command
 var acceptCmd = &cobra.Command{
@@ -41,18 +42,15 @@ to quickly create a Cobra application.`,
 		acceptPlatformManager = enablerplatform.GetInstance(&logger)
 		acceptPlatformManager.LoadUser("", userId)
 		// logger.Printf(invitePlatformManager.UserId)
-		acceptPlatformManager.AcceptNetwork(networkId, orgName, useVolume, zipFile)
+		acceptPlatformManager.AcceptNetwork(useVolume, zipFile, basic)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(acceptCmd)
 	acceptCmd.Flags().StringVarP(&userId, "userId", "u", "", "The User ID for the user.")
-
-	acceptCmd.Flags().StringVarP(&orgName, "orgName", "o", "", "The organization name which wants to join the network.")
-	acceptCmd.Flags().StringVarP(&networkId, "networkId", "n", "", "The Network the organization which wants to join another network.")
 	acceptCmd.Flags().StringVarP(&zipFile, "zipFile", "z", "", "The zip of the files needed.")
-
+	acceptCmd.Flags().BoolVarP(&basic, "simpleSetup", "s", false, "Function to enable or disable the use of Basic setup default: false")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

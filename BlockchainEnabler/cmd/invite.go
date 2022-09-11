@@ -42,7 +42,7 @@ to quickly create a Cobra application.`,
 		invitePlatformManager = enablerplatform.GetInstance(&logger)
 		invitePlatformManager.LoadUser("", userId)
 		// logger.Printf(invitePlatformManager.UserId)
-		invitePlatformManager.InviteOrganization(networkId, orgName, useVolume, file)
+		invitePlatformManager.InviteOrganization(useVolume, file)
 	},
 }
 
@@ -51,10 +51,7 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(inviteCmd)
 	inviteCmd.Flags().StringVarP(&userId, "userId", "u", "", "The User ID for the user.")
-
-	inviteCmd.Flags().StringVarP(&orgName, "orgName", "o", "", "The organization name which wants to join the network.")
-	inviteCmd.Flags().StringVarP(&networkId, "networkId", "n", "", "The Network the organization which wants to join another network.")
-	inviteCmd.Flags().StringVarP(&file, "file", "f", "", "file containing the relevant information.")
+	inviteCmd.Flags().StringVarP(&file, "zipfile", "z", "", "zip file containing the relevant information.")
 	// inviteCmd.Flags().StringVarP(&ordererInfo, "orderercaFile", "c", "", "Pass the orderer ca file only needed in fabric")
 
 	// Here you will define your flags and configuration settings.
