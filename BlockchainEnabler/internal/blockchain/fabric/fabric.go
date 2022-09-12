@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/core/config"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 
 	// "BlockchainEnabler/BlockchainEnabler/internal/enablerplatform"
 
@@ -408,11 +409,7 @@ func (f *FabricDefinition) Accept(userid string, useVolume bool, zipFile string,
 	pathUser := filepath.Join(constants.EnablerDir, userid, f.Enabler.NetworkName, "enabler", userid)
 
 	f.Deployer = getDeployerInstance(f.DeployerType)
-	if basicSetup {
-		if err := f.Deployer.Deploy(workingDir); err != nil {
-			return err
-		}
-	}
+
 	f.unzipFile(zipFile, userid)
 
 	networkConfig := f.loadNetworkConfig(fmt.Sprintf("%s", filepath.Join(pathUser, "network_config.json")), userid)
@@ -420,16 +417,69 @@ func (f *FabricDefinition) Accept(userid string, useVolume bool, zipFile string,
 	blockchaindefinition = &networkConfig.BlockchainDefinition
 	networkDetails, ok := blockchaindefinition.(*types.FabricDefinition)
 
+	// now load the docker compose file, and then add the networks to it.
+
+	// Also need to update the compose file with the network information.
+	// if err := f.Deployer.Deploy(workingDir); err != nil {
+	// 	return err
+	// }
+
 	if ok {
 		networkId := networkConfig.NetworkName
 		orgName := networkDetails.OrganizationInfo.OrganizationName
-
+		loadComposeFile(path.Join(workingDir, "docker-compose.yml"), networkId, pathUser)
+		if err := f.Deployer.Deploy(workingDir); err != nil {
+			return err
+		}
 		f.joinOtherOrgPeerToChannel(userid, networkId, orgName)
 		f.createAnchorPeer(userid, networkId, orgName)
+
+		fmt.Printf(" The network id and org names are %s   %s", networkId, orgName)
 	} else {
 		fmt.Printf("An error occured %s", blockchaindefinition)
 
 	}
+	return nil
+}
+
+func loadComposeFile(composeFile string, externalNetwork string, pathUser string) error {
+	var compose docker.DockerComposeConfig
+	var newCompose docker.DockerComposeConfig
+	var dockerExtNet docker.DockerNetworkName
+	read, err := ioutil.ReadFile(composeFile)
+	if err != nil {
+		return err
+	}
+	yaml.Unmarshal(read, &compose)
+	var serviceNet []string
+	for _, service := range compose.Services {
+		serviceNet = service.DockerNetworkNames
+		// fmt.Printf("%s -> %s", service.ContainerName, service.DockerNetworkNames)
+	}
+	serviceNetworks := append(serviceNet, externalNetwork)
+	newCompose = compose
+	for _, service := range newCompose.Services {
+		service.DockerNetworkNames = serviceNetworks
+	}
+
+	for _, extnet := range compose.Networks {
+		dockerExtNet.DockerExternalNetworkName = extnet.DockerExternalNetwork.DockerExternalNetworkName
+		fmt.Printf("Docker network %s", dockerExtNet.DockerExternalNetworkName)
+	}
+
+	dockerNet := docker.DockerNetwork{
+		DockerExternalNetwork: &docker.DockerNetworkName{DockerExternalNetworkName: fmt.Sprintf("%s_default", externalNetwork)},
+	}
+	for _, networks := range serviceNetworks {
+		if networks == externalNetwork {
+			newCompose.Networks[networks] = &dockerNet
+		}
+	}
+	bytes, err := yaml.Marshal(newCompose)
+	if err != nil {
+		return err
+	}
+	ioutil.WriteFile(composeFile, bytes, 0755)
 	return nil
 }
 

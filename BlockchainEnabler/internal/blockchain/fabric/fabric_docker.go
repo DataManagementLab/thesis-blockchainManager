@@ -18,7 +18,7 @@ type FabricDocker struct{}
 
 // either need to handle the ports issue here as the enabler_external port takes an interaface, it would also be easy to just assign the ports here.
 
-func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume bool, userID string, basicSetup bool) ([]*docker.ServiceDefinition, error) {
+func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume bool, userID string, basicSetup bool, serviceNetworks []string) ([]*docker.ServiceDefinition, error) {
 	external, ok := member.ExternalPorts.(map[string]int)
 
 	var fileDirectory string
@@ -61,9 +61,7 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 				Volumes: []string{
 					fileDirectory,
 				},
-				DockerNetworkNames: []string{
-					"byfn",
-				},
+				DockerNetworkNames: serviceNetworks,
 			},
 			VolumeNames: []string{"fabric_ca", "fabric"},
 		},
@@ -112,9 +110,7 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 					fmt.Sprintf("%d:%d", external["orderer_admin_listen_port"], external["orderer_admin_listen_port"]),
 					fmt.Sprintf("%d:%d", external["orderer_operations_listen_port"], external["orderer_operations_listen_port"]),
 				},
-				DockerNetworkNames: []string{
-					"byfn",
-				},
+				DockerNetworkNames: serviceNetworks,
 			},
 			VolumeNames: []string{fmt.Sprintf("%s", member.OrdererName)},
 		},
@@ -155,9 +151,7 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 					fmt.Sprintf("%d:%d", external["core_peer_listen_address_gossip_port"], external["core_peer_listen_address_gossip_port"]),
 					fmt.Sprintf("%d:%d", external["core_operations_listen_port"], external["core_operations_listen_port"]),
 				},
-				DockerNetworkNames: []string{
-					"byfn",
-				},
+				DockerNetworkNames: serviceNetworks,
 			},
 			VolumeNames: []string{fmt.Sprintf("%s", peerID)},
 		},
@@ -198,9 +192,7 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 					fmt.Sprintf("%d:%d", 7151, external["core_peer_listen_address_gossip_port"]),
 					fmt.Sprintf("%d:%d", 17151, external["core_operations_listen_port"]),
 				},
-				DockerNetworkNames: []string{
-					"byfn",
-				},
+				DockerNetworkNames: serviceNetworks,
 			},
 			VolumeNames: []string{fmt.Sprintf("%s", peerID), "fabric"},
 		},
@@ -223,17 +215,9 @@ func (fabDocker *FabricDocker) Deploy(workingDir string) error {
 }
 
 func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId string, useVolume bool, basicSetup bool) (err error) {
-	fmt.Printf("The value of the user id %s", userId)
-	// dockerNetwor := docker.DockerNetwork {
-	// 	DockerNetName: },
-	// }
-	// dockerExternalNetwork:= docker.externdocker.DockerNetworkExternal{
 
-	// }
-
-	// dockerNetName := docker.DockerNetworkName{
-	// 	DockerExternalNetworkName: enabler.NetworkName,
-	// }
+	var serviceNetworks []string
+	serviceNetworks = append(serviceNetworks, "byfn")
 
 	dockerNet := docker.DockerNetwork{
 		DockerExternalNetwork: &docker.DockerNetworkName{DockerExternalNetworkName: fmt.Sprintf("%s_default", enabler.NetworkName)},
@@ -241,13 +225,15 @@ func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId stri
 
 	compose := docker.CreateDockerCompose()
 	for _, member := range enabler.Members {
-		serviceDefinition, err := GenerateServiceDefinitions(member, fmt.Sprintf("%s", enabler.NetworkName), useVolume, userId, basicSetup)
+		serviceDefinition, err := GenerateServiceDefinitions(member, fmt.Sprintf("%s", enabler.NetworkName), useVolume, userId, basicSetup, serviceNetworks)
 		if err != nil {
 			return err
 		}
 		for _, services := range serviceDefinition {
 			compose.Services[services.ServiceName] = services.Service
-			compose.Networks["byfn"] = &dockerNet
+			for _, networks := range serviceNetworks {
+				compose.Networks[networks] = &dockerNet
+			}
 			for _, volumeName := range services.VolumeNames {
 				compose.Volumes[volumeName] = struct{}{}
 			}
