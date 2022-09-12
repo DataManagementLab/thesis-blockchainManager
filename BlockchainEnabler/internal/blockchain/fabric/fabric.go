@@ -1261,7 +1261,7 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool)
 	}
 	fmt.Printf("Check for network")
 	if err := docker.InspectNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true); err != nil {
-		docker.CreateNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true)
+		docker.CreateOverlayNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true)
 	}
 	fmt.Printf(" %s\n", cmd)
 	out, err := cmd.Output()
