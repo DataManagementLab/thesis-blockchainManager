@@ -234,6 +234,21 @@ func (em *EnablerPlatformManager) AcceptNetwork(useVolume bool, zipFile string, 
 	return nil
 }
 
+
+func (em *EnablerPlatformManager) DeleteNetwork() error {
+	if em.Enablers != nil {
+		for _, network := range em.Enablers {
+
+			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
+			return network.InterfaceProvider.Delete(em.UserId)
+
+		}
+	}
+
+	// currently will just create a demo netowk and try to join using that network.
+	return nil
+}
+
 func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, useVolume bool, invitePhase bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {

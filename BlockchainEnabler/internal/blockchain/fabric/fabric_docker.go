@@ -214,6 +214,16 @@ func (fabDocker *FabricDocker) Deploy(workingDir string) error {
 	return nil
 }
 
+func (fabDocker *FabricDocker) Terminate(workingDir string) error {
+	
+	err := docker.RunDockerComposeCommand(workingDir, true, true, "down", "-v")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+
 func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId string, useVolume bool, basicSetup bool) (err error) {
 
 	var serviceNetworks []string

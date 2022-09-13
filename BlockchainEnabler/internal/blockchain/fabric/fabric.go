@@ -355,6 +355,25 @@ func (f *FabricDefinition) Invite(userid string, useVolume bool, zipfile string)
 	return nil
 }
 
+func (f *FabricDefinition) Delete(userId string) (err error) {
+
+	//Steps to follow:
+	// Basic step to fetch the deployer instance.\return nil
+	f.Deployer = getDeployerInstance(f.DeployerType)
+	userIdentification = userId
+	workingDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
+	if err := f.Deployer.Terminate(workingDir); err != nil {
+		return err
+	}
+
+	err = os.RemoveAll(workingDir)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (f *FabricDefinition) loadNetworkConfig(configFile string, userId string) types.NetworkConfig {
 
 	// var infoFile string
@@ -1261,7 +1280,7 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool)
 	}
 	fmt.Printf("Check for network")
 	if err := docker.InspectNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true); err != nil {
-		docker.CreateOverlayNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true)
+		docker.CreateNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true)
 	}
 	fmt.Printf(" %s\n", cmd)
 	out, err := cmd.Output()

@@ -9,6 +9,7 @@ type IProvider interface {
 	Request(string, string, string, bool, string) error
 
 	Accept(string, bool, string, bool) error
+	Delete(string) error
 
 	// WriteConfigs() error
 	// GetDockerServiceDefinitions() []*docker.ServiceDefinition
