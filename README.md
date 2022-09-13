@@ -200,32 +200,34 @@ go run main.go init ${USERNAME}
 ```bash
 Flags:
   -s, --simpleSetup   Choose this to form a network without the orderer default: disabled
-  -b, --blockchain    Provide the Blockchain you would like to use options are [fabric geth corda] (default "fabric")
-  -n, --networkID     Provide the name for the network. (default "kinshuk_network1")
-  -o, --orgName       Provide the name for the organization default value org1. (default "Org1")
-  -v, --useVolume     enable or disable the use of Volume default: disabled
+  -b, --blockchain string   Provide the Blockchain you would like to use options are [fabric geth corda] (default "fabric")
+  -n, --networkID string    Provide the name for the network. The default value is ${USERNAME}_network1
+  -o, --orgName string      Provide the name for the organization default value ${USERNAME}Org1.
 ```
 
+The **init** command is the most essential command for forming the network, it **initializes** the network.
 
-The **init** command is the most essential command, it **initializes** the network.
+In the init , an important option to choose from is the -s flag which initializes network as simple setup with just one peer in the organization and without any other components or containers. 
 
-By Initilaizing the network, it creates the necessary files that are needed for creating the network.
+#NOTE in case of simple setup , we donot need to call the create command , instead the network is created directly in the accept phase.
 
-It is the preparatory phase for the network, where the important files such as docker-compose, configtx, cryptogen are created along with the entire folder structure.
+The option is to have the network with other components for the Organization apart from the peer. 
+
+By Initilaizing the network, it is the preparatory phase for the creating network which generates necessary files needed for the network.
+
+It stores these files under the right folder structure.
 
 Once the initialization of the network is done, then the user can now proceed to the creation phase of the network.
 
 ### The Creation Phase
 
-The initialization phase is followed by creation of the network using files that were generated and created during the initializing phase.
+The initialization phase is followed by creation of the network using files that were generated using the init.
 
-The user can also decide whether they want network with all the containers ( in Fabric orderer and peer) or just create a simple setup with just one container representing the peer.
+The main idea of this command is to instantiate the containers, for the newtwork so that they can communicate with each other.  
 
-A normal network is created by default (with orderer and peer) unless chosen otherwise. 
+This command works differently on different blockchain and follows different set of steps for each [Hyperledger fabric](https://www.hyperledger.org/use/fabric) and [Ethereum](https://ethereum.org/en/).
 
-This command works differently on different blockchain. And follows different set of steps for each [Hyperledger fabric](https://www.hyperledger.org/use/fabric) and [Ethereum](https://ethereum.org/en/).
-
-Once the network is created, the network is joined by the parent organization peers. 
+Once the network is created, the network is fully functional network with multiple components.  
 
 Now the organization can invite the other organization to also join this network using the join phase.
 
@@ -236,52 +238,56 @@ go run main.go create -u ${USERID} -n ${NETWORK_NAME}
 ```
 ``` bash
 Flags:
-  -s, --simpleSetup     Function to enable or disable the use of Basic setup default: false
-  -n, --netid string    Provide the network id of the network you want to run.
-  -u, --userId string   Provide the user Id for the network you want to run.
-  -v, --useVolume       enable or disable the use of Volume default: disabled
+  -n, --netid string    Provide the network id of the network you want to run, this network id is needed if you intend of creating a different network than the one initialized.
+  -u, --userId string   Provide the user Id which wants to create the network, it should be same as one passed in init phase. 
  ```
 
 ### The Join Phase
 
   The join phase is divided into two parts
 
-  1. Preparation
-  2. Finalize 
+  1. Invite
+  2. Accept 
 
-  1. Preparation is done by the organization which has invited the other organization to join the network.
+  1. Invite is done by the organization which has invited the other organization to join the network.
   Thus in this phase, the iniviting organization, prepares the network by making changes to the configurations such that another organization is allowed to join the network.
   ```bash
-  go run main.go join -u ${USERID} -o ${JOINING_ORG} -n ${NETWORK_OF_JOINING_ORG} -t ${TARGET_NETWORK_TO_JOIN} -j ${ORGANIZAITION_WHOSE_NETWORK_TO_BE_JOINED}
+  go run main.go invite -u ${USERID_Inviter Organization} -z ${Zip file provided by the other organization}
   ```
 
   ```bash
   Flags:
-  -n, --networkId1 string   The Network the organization which wants to join another network.
-  -t, --networkId2 string   The Network the organization or the target network.
-  -o, --orgname1 string     The organization name which wants to join the network.
-  -j, --orgname2 string     The organization name whose network is to be joined.
   -u, --userId string       The User ID for the user.
+  -z  --zipFile string      Zip file containing information of the joining organization. 
   -v, --useVolume           Function to enable or disable the use of Volume default: false
 
   ```
-  Once the preparation phase is done, the organization can now join this network.
+  Once the Invite phase is done, the organization can now join this network.
 
-  In order to do so, we have another phase called the finalize phase.
+  In order to do so, we have another phase called the Accept phase.
   Which runs on behalf, or in the organization which wants to join the network.
+  
+  The zip file is generated inside the folder for the network and it needs to be passed to the inviter only then the invitee can join the network.
 
-  2. Finalize phase is handled by organization which wants to join the network.
+  2. Accept phase is handled by organization which wants to join the network.
 
   In this phase, the organization joins the network and adds its peers to the network.
 
-  The commands for this is the same only one of the flag -f (which represents the finalize ) needs to be appended to the command.
+  
+```bash
+  go run main.go invite -u ${USERID_Inviter Organization} -z ${Zip file provided by the other invitee organization}
+  ```
+
   ```bash
-   go run main.go join -u ${USERID} -o ${JOINING_ORG} -n ${NETWORK_OF_JOINING_ORG} -t ${TARGET_NETWORK_TO_JOIN} -j ${ORGANIZAITION_WHOSE_NETWORK_TO_BE_JOINED} -f
+  Flags:
+  -u, --userId string       The User ID for the user.
+  -z  --zipFile string      Zip file containing information of the joining organization. 
+  -v, --useVolume           Function to enable or disable the use of Volume default: false
+
   ```
-   Flags:
-   ```bash
-   -f, --finalize            Function to tell which phase it is as join is divided into two phases preparation and finalize. It runs on behalf of the adding network.
-  ```
+The accept phase looks similar to the invite in the command line however, we pass different zip files in each of these phases.
+
+In accept we pass the zip file from the inviter Organization denoted with _accept inside the network folder structure to the invitee organization
 
   ### Leave Phase
 
@@ -293,13 +299,11 @@ Flags:
 
   As in all of these changes, the transaction needs to be endorsed by peers, thus after the majority of peers have endorsed the transaction, only then the transaction comes into effect.
   ```bash
-  go run main.go leave -u ${USERID} -o ${ORGANIZATION_WHICH_WANTS_TO_LEAVE} -n ${NETWORK_THE_ORGANIZATION_BELONGS_TO} -p ${NETWORK_WHICH_IT_WANTS_TO_LEAVE}
-
+  go run main.go leave -u ${USERID} -o ${ORGANIZATION_WHICH_WANTS_TO_LEAVE} -n ${NETWORK_THE_ORGANIZATION_BELONGS_TO}
 
   Flags:
   -n, --networkName string         The Network the organization which wants to leave
   -o, --orgName string             The organization name which wants to leave the channel.
-  -p, --parentNetworkName string   The parent network for the organization which wants to leave
   -u, --userId string              The User ID for the user.
   -v, --useVolume                  Function to enable or disable the use of Volume default: false
 
@@ -313,99 +317,111 @@ This process is designed to guide you through the entire process of initializing
 
 This serves as a point to check for errors, if you are facing any while replicating the commands in your network.
 
-Our example considers two **ORGANIZATIONS**, **Org1** and **Org3**
+Our example considers two users, **CompanyA** and **CompanyB**
 
 Our first example is without Volume, later we will also showcase how it is used with volume.
 
-Org1 is **initialized** as normal setup under the userid kinshuk.
+CompanyA **initializes** a simple network with userid as CompanyA.
 
 with command 
 
 ```bash
-go run main.go init kinshuk
+go run main.go init CompanyA
 
 ```
 
-A network is initialized with name kinshuk_network1, and the setup does not utilize the volumes, we can change that by using the -v flag.
-
-Also we can change the name of the network instead by providing the network name along with the -n flag.
+A network is initialized with name CompanyA_network1. This network has default organization CompanyAOrg1. However this organization name could also be changed in the init command using -o flag. 
 
 We can also choose which blockchain we want to use by changing choosing fabric/ether with -b flag.
 
-As some of these are done by default so we donot need to specify them everytime we initialize the network. 
-
+Once this command runs, it initializes the network and creates user with id CompanyA, and under this userid , network CompanyA_network1 containing organization CompanyAOrg1 is initialized. 
 
 Next we create the Network using the **create** command.
 
 ```bash
-go run main.go create -u kinshuk -n kinshuk_network1
+go run main.go create -u CompanyA 
 ```
 
-This will create and run the containers for the network. Thus once this phase has been successfully executed, the network kinshuk_network1 is live with its containers, and organization Org1 choosen by default is the member of this network.
+This will create and run the containers for the currently initialized network. Once this phase has been successfully executed, the network CompanyA_network1 is live with its containers, and organization CompanyAOrg1 is part of this network.
 
-Now since the network is created for the Org1 , we now need to create the Organization which wants to join the network.
+So far we have seen how we can create a network using our platform.
 
-Here we are currently utilizing the --simplesetup which means in our network we only have a single peer container.
+To fully realize the benefits of collaboration, we need to make things bit more complicated. Not really :)
 
-So in order to initialize and create the Org3, we follow the same process starting with the **init** followed by **create**
+Lets introduce another network into this picture, by introducing this another network , we aim to join the network created by ComanyA ,CompanyA_network1
+
+and work on the network.
+
+To do so we follow the same step that we took for initialization of CompanyA , however this time we do it for user id CompanyB.
+
+Also for demonstration, lets try out the -s flag for the simple setup while using init for CompanyB.
+
+So in order to initialize , we follow the same process as for CompanyA starting with the **init** however this time we also pass flag -s for a simple setup.
 
 ```bash
 
-go run main.go init kinshuk -o Org3 -n kinshuk_network3 -s     
+go run main.go init CompanyB -s     
 
 ```
 
-Here we are passing the Organization name as Org3 and the network name as kinshuk_network3 while also passing the flag for simple setup
+Now this will create the user with user ID CompanyB, and inside the CompanyB, would initialize a network CompanyB_network with only component CompanyBOrg1
 
-Next we need to run the create using the command below.
+However this network is not up and running now. Our aim with -s (simple setup) flag is that we donot have to carry on with the create phase again, and the containers are instantiated when they want to join another network. 
+
+So this intuitively means we donot have to run the create phase for the setup. 
+
+Also in the init phase, a zip file is generated which is used for sending it to the inviter organization.
+
+We can located this file in the directory where the network is present. ~$HOME/.enabler/platform/{userid}/${network_name}/enabler/ {$OrganizationName}_invite.zip
+
+THe user can find the path for this file in the command line when they run init command. 
+
+So next step would be to located this file for the user id CompanyB and network id CompanyB_network and then send this file to the inviter which is our CompanyA.
+
+Currently we assume any form of connection for transfering the zip file, eg via email, or file transfer, this process is handled outside of our platform. 
+
+Once this file is located and passed to CompanyA,
+
+Next we can begin with the join phase by starting with the invite phase. 
+
+Remember this phase is run on the Organization which wants to invite another organization to join its network, in our case CompanyA which is inviting CompanyB to join the network CompanyA_network.
+
 
 ```bash
-go run main.go create -u kinshuk -n kinshuk_network3 -s   
+go run main.go invite -u CompanyA -z /path_to_/CompanyBOrg1_invite.zip
 
 ```
 
-This would create the network kinshuk_network3 with Org3 and peer0 from Org3.
-
-Once both of our organizations are ready, we can invite Org3 to join the network created by Org1, kinshuk_network1.
-
-Currently this step is done offline, where the Org3 sends its configuration file (organization definition file generated in create phase) to Org1.
-
-After this the Org1 uses this org definition file in order to add Org3 to the kinshuk_network1
-
-This is taken care in the **join** Preparation phase.
+Here we pass the path to the copied invite file from CompanyB.
 
 
+This command adds the configuration details for CompanyB to the CompanyA_network.
+
+Once this command runs successfully, CompanyBOrg1 is ready to join the network.
+
+But for this we need now a file from the CompanyA (inviter). This zip file is generated in the create phase for CompanyA with name CompanyAOrg1_accept_transfer.zip and is sent to organization, which want to join this network.
+
+Again this is handled independent of the platform. Once this accept file has been transferred to the CompanyB, we can now run the accept phase.
+
+To do this , we run the accept command in the host machine with user CompanyB
 ```bash
-go run main.go join -u kinshuk -o Org3 -n kinshuk_network3 -m kinshuk_network1 -j Org1
+go run main.go accept -u CompanyB -z /path_to_/CompanyAOrg1_accept_transfer.zip
 
 ```
 
-This command uses the organization definition file provided by Org3 and then uses it to add the configuration to the network kinshuk_network1.
-
-Once this command runs successfully, Org3 is ready to join the network.
-
-Next is the **join** Finalize phase
-
-```bash
-go run main.go join -u kinshuk -o Org3 -n kinshuk_network3 -m kinshuk_network1 -j Org1 -f
-
-```
-
-This command is run by the Org3 it requires also the file used by the orderer in order to join  the network and the genesis block,
-
-once executed, the Org3 is has now joined the kinshuk_network1
+once executed successfully, the Organization CompanyBOrg1 is first created and then it joins the network for CompanyA , CompanyA_network
 
 
-Finally if the Org3 wants, it can **leave** the network using the leave command.
+Finally once this is done, if any Organization wants, then it can also **leave** the network using the leave command.
 
 ```bash
 
-go run main.go leave -u kinshuk -o Org3 -n kinshuk_network3 -p kinshuk_network1
+go run main.go leave -u CompanyB -o CompanyAOrg1 -n CompanyA_network1 
 ```
 
-This is also executed in phases whose one part is run by the Org3 and the other by the Org1 which is still part of the network.
 
-Once this command has executed successfully, Org3 would no longer be part of the network kinshuk_network1
+where -o and -n specify the network CompanyB operated Organization wants to leave, in our case it is CompanyAOrg1 and CompanyA_network1, 
+once this is run, now the CompanyBOrg1 is no longer part of the network CompanyA_network1 and would not receive any new updates.
 
 
 
