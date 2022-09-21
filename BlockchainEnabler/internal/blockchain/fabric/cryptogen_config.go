@@ -17,6 +17,7 @@
 package fabric
 
 import (
+	"BlockchainEnabler/BlockchainEnabler/internal/types"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -60,23 +61,23 @@ type CryptogenConfig struct {
 	PeerOrgs    []*Org `yaml:"PeerOrgs,omitempty"`
 }
 
-func WriteCryptogenConfig(memberCount int, path string, orgName string,basicSetup bool) error {
+func WriteCryptogenConfig(memberCount int, path string, net *types.Member, basicSetup bool) error {
 	var cryptogenConfigBytes []byte
 	cryptogenConfig := &CryptogenConfig{
 		OrdererOrgs: []*Org{
 			{
-				Name:          "Orderer",
+				Name:          fmt.Sprintf("%s", net.OrdererOrg),
 				Domain:        "example.com",
 				EnableNodeOUs: true,
 				Specs: []*Spec{
-					{Hostname: "fabric_orderer"},
+					{Hostname: fmt.Sprintf("%s", net.OrdererName)},
 				},
 			},
 		},
 		PeerOrgs: []*Org{
 			{
-				Name:          fmt.Sprintf("%s", orgName),
-				Domain:        fmt.Sprintf("%s.example.com", strings.ToLower(orgName)),
+				Name:          fmt.Sprintf("%s", net.OrgName),
+				Domain:        fmt.Sprintf("%s.example.com", strings.ToLower(net.OrgName)),
 				EnableNodeOUs: true,
 				CA: &CA{
 					Hostname:           "fabric_ca",
@@ -98,8 +99,8 @@ func WriteCryptogenConfig(memberCount int, path string, orgName string,basicSetu
 	cryptogenConfigBasicSetup := &CryptogenConfig{
 		PeerOrgs: []*Org{
 			{
-				Name:          fmt.Sprintf("%s", orgName),
-				Domain:        fmt.Sprintf("%s.example.com", strings.ToLower(orgName)),
+				Name:          fmt.Sprintf("%s", net.OrgName),
+				Domain:        fmt.Sprintf("%s.example.com", strings.ToLower(net.OrgName)),
 				EnableNodeOUs: true,
 				CA: &CA{
 					Hostname:           "fabric_ca",
@@ -118,9 +119,9 @@ func WriteCryptogenConfig(memberCount int, path string, orgName string,basicSetu
 			},
 		},
 	}
-	if basicSetup{
+	if basicSetup {
 		cryptogenConfigBytes, _ = yaml.Marshal(cryptogenConfigBasicSetup)
-	}else{
+	} else {
 		cryptogenConfigBytes, _ = yaml.Marshal(cryptogenConfig)
 	}
 

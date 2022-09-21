@@ -23,11 +23,10 @@ import (
 )
 
 var leavePlatformEnabler *enablerplatform.EnablerPlatformManager
-
-var orgID string
+var orgId string
 var networkName string
-var parentNetworkName string
 var userID string
+var finalize bool
 
 // leaveCmd represents the leave command
 var leaveCmd = &cobra.Command{
@@ -38,20 +37,20 @@ var leaveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("leave called")
 		leavePlatformEnabler = enablerplatform.GetInstance(&logger)
-		leavePlatformEnabler.LoadUser(parentNetworkName, userID)
+		leavePlatformEnabler.LoadUser("", userID)
 		// logger.Printf(joinPlatformManager.UserId)
-		
-		leavePlatformEnabler.LeaveNetwork(networkName, orgID,useVolume)
+
+		leavePlatformEnabler.LeaveNetwork(networkName, orgId, useVolume, finalize)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(leaveCmd)
 	leaveCmd.Flags().StringVarP(&userID, "userId", "u", "", "The User ID for the user.")
+	leaveCmd.Flags().StringVarP(&orgId, "orgName", "o", "", "The organization name whose network it wants to leave.")
 
-	leaveCmd.Flags().StringVarP(&orgID, "orgName", "o", "", "The organization name which wants to leave the channel.")
 	leaveCmd.Flags().StringVarP(&networkName, "networkName", "n", "", "The Network the organization which wants to leave")
-	leaveCmd.Flags().StringVarP(&parentNetworkName, "parentNetworkName", "p", "", "The parent network for the organization which wants to leave")
+	leaveCmd.Flags().BoolVarP(&finalize, "finalize", "p", false, "The final step of leave need to be run by the other org.")
 
 	// Here you will define your flags and configuration settings.
 

@@ -12,8 +12,14 @@ import (
 func CreateVolume(volumeName string, verbose bool) error {
 	return RunDockerCommand(".", verbose, verbose, "volume", "create", volumeName)
 }
-func CreateNetwork(networkName string, verbose bool) error{
+func CreateNetwork(networkName string, verbose bool) error {
 	return RunDockerCommand(".", verbose, verbose, "network", "create", networkName)
+}
+func CreateOverlayNetwork(networkName string, verbose bool) error {
+	return RunDockerCommand(".", verbose, verbose, "network", "create", "--attachable", "--driver", "overlay", networkName)
+}
+func InspectNetwork(networkName string, verbose bool) error {
+	return RunDockerCommand(".", verbose, verbose, "network", "inspect", networkName)
 }
 
 func CopyFileToVolume(volumeName string, sourcePath string, destPath string, verbose bool) error {

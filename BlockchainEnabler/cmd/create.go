@@ -27,7 +27,7 @@ var networkId string
 var userId string
 var createPlatformManager *enablerplatform.EnablerPlatformManager
 var useSDK bool
-var basic bool
+var externalNetwork string
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
@@ -52,9 +52,9 @@ var createCmd = &cobra.Command{
 		logger.Printf(createPlatformManager.UserId)
 		fmt.Printf("The value of sdk is %v", useSDK)
 		if useSDK {
-			createPlatformManager.CreateNetworkUsingSDK(useVolume, basic)
+			createPlatformManager.CreateNetworkUsingSDK(useVolume, externalNetwork)
 		} else {
-			createPlatformManager.CreateNetwork(useVolume, basic)
+			createPlatformManager.CreateNetwork(useVolume, externalNetwork)
 		}
 
 		// one more thing to consider is to before running the network actually checking if the ports are available or not and then if not then changing the ports and
@@ -71,9 +71,8 @@ func init() {
 	rootCmd.AddCommand(createCmd)
 	createCmd.Flags().StringVarP(&userId, "userId", "u", "", "Provide the user Id for the network you want to run.")
 	createCmd.Flags().StringVarP(&networkId, "netid", "n", "", "Provide the network id of the network you want to run.")
-	createCmd.Flags().BoolVarP(&useSDK, "useSDK", "s", false, "Function to enable or disable the use of SDK default: false")
-	createCmd.Flags().BoolVarP(&basic, "basicSetup", "b", false, "Function to enable or disable the use of Basic setup default: false")
-
+	createCmd.Flags().BoolVarP(&useSDK, "useSDK", "l", false, "Function to enable or disable the use of SDK default: false")
+	createCmd.Flags().StringVarP(&externalNetwork, "externalNetwork", "e", "", "Provide external network if needed.")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

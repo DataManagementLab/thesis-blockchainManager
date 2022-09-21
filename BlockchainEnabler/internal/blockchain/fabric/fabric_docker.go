@@ -18,13 +18,15 @@ type FabricDocker struct{}
 
 // either need to handle the ports issue here as the enabler_external port takes an interaface, it would also be easy to just assign the ports here.
 
-func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume bool, userID string, basicSetup bool) ([]*docker.ServiceDefinition, error) {
+func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume bool, userID string, basicSetup bool, serviceNetworks []string) ([]*docker.ServiceDefinition, error) {
 	external, ok := member.ExternalPorts.(map[string]int)
 
 	var fileDirectory string
 	var orgDomain string
 	var peerID string
-	orgDomain = fmt.Sprintf("%s.example.com", strings.ToLower(member.OrgName))
+	var domainName string
+	domainName = "example.com"
+	orgDomain = fmt.Sprintf("%s.%s", strings.ToLower(member.OrgName), domainName)
 	peerID = fmt.Sprintf("%s.%s", member.NodeName, orgDomain)
 
 	if !ok {
@@ -39,13 +41,13 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 	serviceDefinitions := []*docker.ServiceDefinition{
 		// Fabric CA
 		{
-			ServiceName: fmt.Sprintf("fabric_ca"),
+			ServiceName: fmt.Sprintf("fabric_ca.%s", strings.ToLower(member.OrgName)),
 			Service: &docker.Service{
 				Image:         "hyperledger/fabric-ca:1.5",
-				ContainerName: fmt.Sprintf("fabric_ca"),
+				ContainerName: fmt.Sprintf("fabric_ca.%s", strings.ToLower(member.OrgName)),
 				Environment: map[string]string{
 					"FABRIC_CA_HOME":                            "/etc/hyperledger/fabric-ca-server",
-					"FABRIC_CA_SERVER_CA_NAME":                  "fabric_ca",
+					"FABRIC_CA_SERVER_CA_NAME":                  fmt.Sprintf("fabric_ca.%s", strings.ToLower(member.OrgName)),
 					"FABRIC_CA_SERVER_PORT":                     fmt.Sprintf("%d", external["ca_server_port"]),
 					"FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS": fmt.Sprintf("0.0.0.0:%d", external["ca_operations_listen_port"]),
 					"FABRIC_CA_SERVER_CA_CERTFILE":              fmt.Sprintf("/etc/enabler/organizations/peerOrganizations/%s/ca/fabric_ca.%s-cert.pem", orgDomain, orgDomain),
@@ -59,43 +61,41 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 				Volumes: []string{
 					fileDirectory,
 				},
-				DockerNetworkNames: []string{
-					"byfn",
-				},
+				DockerNetworkNames: serviceNetworks,
 			},
 			VolumeNames: []string{"fabric_ca", "fabric"},
 		},
 
 		// Fabric Orderer
 		{
-			ServiceName: fmt.Sprintf("fabric_orderer"),
+			ServiceName: fmt.Sprintf("%s", member.OrdererName),
 			Service: &docker.Service{
 				Image:         "hyperledger/fabric-orderer:2.3",
-				ContainerName: fmt.Sprintf("fabric_orderer"),
+				ContainerName: fmt.Sprintf("%s", member.OrdererName),
 				Environment: map[string]string{
 					"FABRIC_LOGGING_SPEC":             "INFO",
 					"ORDERER_GENERAL_LISTENADDRESS":   "0.0.0.0",
 					"ORDERER_GENERAL_LISTENPORT":      fmt.Sprint(external["orderer_general_listen_port"]),
-					"ORDERER_GENERAL_LOCALMSPID":      "OrdererMSP",
-					"ORDERER_GENERAL_LOCALMSPDIR":     "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp",
+					"ORDERER_GENERAL_LOCALMSPID":      fmt.Sprintf("%sMSP", member.OrdererOrg),
+					"ORDERER_GENERAL_LOCALMSPDIR":     fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/msp", member.OrdererName, domainName),
 					"ORDERER_GENERAL_TLS_ENABLED":     "true",
-					"ORDERER_GENERAL_TLS_PRIVATEKEY":  "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/tls/server.key",
-					"ORDERER_GENERAL_TLS_CERTIFICATE": "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/tls/server.crt",
-					"ORDERER_GENERAL_TLS_ROOTCAS":     "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/tls/ca.crt",
+					"ORDERER_GENERAL_TLS_PRIVATEKEY":  fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/tls/server.key", member.OrdererName, domainName),
+					"ORDERER_GENERAL_TLS_CERTIFICATE": fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/tls/server.crt", member.OrdererName, domainName),
+					"ORDERER_GENERAL_TLS_ROOTCAS":     fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/tls/ca.crt", member.OrdererName, domainName),
 					// "ORDERER_GENERAL_GENESISMETHOD":             "file",
 					// "ORDERER_GENERAL_GENESISFILE":               "/etc/enabler/genesis.block",
 					"ORDERER_KAFKA_TOPIC_REPLICATIONFACTOR":     "1",
 					"ORDERER_KAFKA_VERBOSE":                     "true",
-					"ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE": "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/tls/server.crt",
-					"ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY":  "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/tls/server.key",
-					"ORDERER_GENERAL_CLUSTER_ROOTCAS":           "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/tls/ca.crt",
+					"ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE": fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/tls/server.crt", member.OrdererName, domainName),
+					"ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY":  fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/tls/server.key", member.OrdererName, domainName),
+					"ORDERER_GENERAL_CLUSTER_ROOTCAS":           fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/tls/ca.crt", member.OrdererName, domainName),
 					"ORDERER_GENERAL_BOOTSTRAPMETHOD":           "none",
 					"ORDERER_CHANNELPARTICIPATION_ENABLED":      "true",
 					"ORDERER_ADMIN_TLS_ENABLED":                 "true",
-					"ORDERER_ADMIN_TLS_CERTIFICATE":             "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/tls/server.crt",
-					"ORDERER_ADMIN_TLS_PRIVATEKEY":              "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/tls/server.key",
-					"ORDERER_ADMIN_TLS_ROOTCAS":                 "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/tls/ca.crt",
-					"ORDERER_ADMIN_TLS_CLIENTROOTCAS":           "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/tls/ca.crt",
+					"ORDERER_ADMIN_TLS_CERTIFICATE":             fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/tls/server.crt", member.OrdererName, domainName),
+					"ORDERER_ADMIN_TLS_PRIVATEKEY":              fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/tls/server.key", member.OrdererName, domainName),
+					"ORDERER_ADMIN_TLS_ROOTCAS":                 fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/tls/ca.crt", member.OrdererName, domainName),
+					"ORDERER_ADMIN_TLS_CLIENTROOTCAS":           fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/example.com/orderers/%s.%s/tls/ca.crt", member.OrdererName, domainName),
 					"ORDERER_ADMIN_LISTENADDRESS":               fmt.Sprintf("0.0.0.0:%d", external["orderer_admin_listen_port"]),
 					"ORDERER_OPERATIONS_LISTENADDRESS":          fmt.Sprintf("0.0.0.0:%d", external["orderer_operations_listen_port"]),
 				},
@@ -103,18 +103,16 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 				Command:    "orderer",
 				Volumes: []string{
 					fileDirectory,
-					fmt.Sprintf("fabric_orderer:/var/hyperledger/production/orderer"),
+					fmt.Sprintf("%s:/var/hyperledger/production/orderer", member.OrdererName),
 				},
 				Ports: []string{
 					fmt.Sprintf("%d:%d", external["orderer_general_listen_port"], external["orderer_general_listen_port"]),
 					fmt.Sprintf("%d:%d", external["orderer_admin_listen_port"], external["orderer_admin_listen_port"]),
 					fmt.Sprintf("%d:%d", external["orderer_operations_listen_port"], external["orderer_operations_listen_port"]),
 				},
-				DockerNetworkNames: []string{
-					"byfn",
-				},
+				DockerNetworkNames: serviceNetworks,
 			},
-			VolumeNames: []string{"fabric_orderer"},
+			VolumeNames: []string{fmt.Sprintf("%s", member.OrdererName)},
 		},
 
 		// Fabric Peer
@@ -153,9 +151,7 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 					fmt.Sprintf("%d:%d", external["core_peer_listen_address_gossip_port"], external["core_peer_listen_address_gossip_port"]),
 					fmt.Sprintf("%d:%d", external["core_operations_listen_port"], external["core_operations_listen_port"]),
 				},
-				DockerNetworkNames: []string{
-					"byfn",
-				},
+				DockerNetworkNames: serviceNetworks,
 			},
 			VolumeNames: []string{fmt.Sprintf("%s", peerID)},
 		},
@@ -196,11 +192,9 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 					fmt.Sprintf("%d:%d", 7151, external["core_peer_listen_address_gossip_port"]),
 					fmt.Sprintf("%d:%d", 17151, external["core_operations_listen_port"]),
 				},
-				DockerNetworkNames: []string{
-					"byfn",
-				},
+				DockerNetworkNames: serviceNetworks,
 			},
-			VolumeNames: []string{fmt.Sprintf("%s", peerID),"fabric"},
+			VolumeNames: []string{fmt.Sprintf("%s", peerID), "fabric"},
 		},
 	}
 	if basicSetup {
@@ -220,18 +214,20 @@ func (fabDocker *FabricDocker) Deploy(workingDir string) error {
 	return nil
 }
 
+func (fabDocker *FabricDocker) Terminate(workingDir string) error {
+	
+	err := docker.RunDockerComposeCommand(workingDir, true, true, "down", "-v")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+
 func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId string, useVolume bool, basicSetup bool) (err error) {
-	fmt.Printf("The value of the user id %s", userId)
-	// dockerNetwor := docker.DockerNetwork {
-	// 	DockerNetName: },
-	// }
-	// dockerExternalNetwork:= docker.externdocker.DockerNetworkExternal{
 
-	// }
-
-	// dockerNetName := docker.DockerNetworkName{
-	// 	DockerExternalNetworkName: enabler.NetworkName,
-	// }
+	var serviceNetworks []string
+	serviceNetworks = append(serviceNetworks, "byfn")
 
 	dockerNet := docker.DockerNetwork{
 		DockerExternalNetwork: &docker.DockerNetworkName{DockerExternalNetworkName: fmt.Sprintf("%s_default", enabler.NetworkName)},
@@ -239,13 +235,15 @@ func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId stri
 
 	compose := docker.CreateDockerCompose()
 	for _, member := range enabler.Members {
-		serviceDefinition, err := GenerateServiceDefinitions(member, fmt.Sprintf("%s", enabler.NetworkName), useVolume, userId, basicSetup)
+		serviceDefinition, err := GenerateServiceDefinitions(member, fmt.Sprintf("%s", enabler.NetworkName), useVolume, userId, basicSetup, serviceNetworks)
 		if err != nil {
 			return err
 		}
 		for _, services := range serviceDefinition {
 			compose.Services[services.ServiceName] = services.Service
-			compose.Networks["byfn"] = &dockerNet
+			for _, networks := range serviceNetworks {
+				compose.Networks[networks] = &dockerNet
+			}
 			for _, volumeName := range services.VolumeNames {
 				compose.Volumes[volumeName] = struct{}{}
 			}
