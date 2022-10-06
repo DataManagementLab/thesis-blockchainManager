@@ -25,6 +25,20 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type Signature struct {
+	Sign       string          `json:"signature,omitempty"`
+	SignHeader SignatureHeader `json:"signature_header,omitempty"`
+}
+
+type SignatureCreator struct {
+	ID    string `json:"id_bytes,omitempty"`
+	MspID string `json:"mspid,omitempty"`
+}
+type SignatureHeader struct {
+	Creator SignatureCreator `json:"creator,omitempty"`
+	Nonce   string           `json:"nonce,omitempty"`
+}
+
 type Registrar struct {
 	EnrollID     string `yaml:"enrollId,omitempty"`
 	EnrollSecret string `yaml:"enrollSecret,omitempty"`
@@ -117,12 +131,12 @@ func WriteNetworkConfig(outputPath string, enablerPath string, member types.Memb
 	var peerName string
 	var orgDomain string
 	domainName := "example.com"
-	orgDomain = fmt.Sprintf("%s.%s",strings.ToLower(member.OrgName),domainName)
+	orgDomain = fmt.Sprintf("%s.%s", strings.ToLower(member.OrgName), domainName)
 	peerName = fmt.Sprintf("%s.%s", member.NodeName, orgDomain)
 
 	networkConfig := &FabricNetworkConfig{
 		CertificateAuthorities: map[string]*NetworkEntity{
-			fmt.Sprintf("%s",orgDomain): {
+			fmt.Sprintf("%s", orgDomain): {
 				TLSCACerts: &Path{
 					Path: fmt.Sprintf("%s/organizations/peerOrganizations/%s/ca/fabric_ca.%s-cert.pem", enablerPath, orgDomain, orgDomain),
 				},
@@ -135,7 +149,7 @@ func WriteNetworkConfig(outputPath string, enablerPath string, member types.Memb
 		},
 		Channels: map[string]*Channel{
 			"enablerchannel": {
-				Orderers: []string{fmt.Sprintf("%s",member.OrdererName)},
+				Orderers: []string{fmt.Sprintf("%s", member.OrdererName)},
 				Peers: map[string]*ChannelPeer{
 					fmt.Sprintf("%s", peerName): {
 						ChaincodeQuery: true,
@@ -183,18 +197,18 @@ func WriteNetworkConfig(outputPath string, enablerPath string, member types.Memb
 			},
 		},
 		Orderers: map[string]*NetworkEntity{
-			fmt.Sprintf("%s",member.OrdererName): {
+			fmt.Sprintf("%s", member.OrdererName): {
 				TLSCACerts: &Path{
-					Path: fmt.Sprintf("%s/organizations/ordererOrganizations/%s/tlsca/tlsca.%s-cert.pem", enablerPath,domainName,domainName),
+					Path: fmt.Sprintf("%s/organizations/ordererOrganizations/%s/tlsca/tlsca.%s-cert.pem", enablerPath, domainName, domainName),
 				},
-				URL: fmt.Sprintf("grpcs://%s:7050",member.OrdererName),
+				URL: fmt.Sprintf("grpcs://%s:7050", member.OrdererName),
 			},
 		},
 		Organizations: map[string]*Organization{
 			fmt.Sprintf("%s", orgDomain): {
 				CertificateAuthorities: []string{fmt.Sprintf("%s", orgDomain)},
 				CryptoPath:             fmt.Sprintf("%s/organizations/peerOrganizations/%s/users/Admin@%s/msp", enablerPath, orgDomain, orgDomain),
-				MSPID:                  fmt.Sprintf("%sMSP",member.OrgName),
+				MSPID:                  fmt.Sprintf("%sMSP", member.OrgName),
 				Peers:                  []string{peerName},
 			},
 		},

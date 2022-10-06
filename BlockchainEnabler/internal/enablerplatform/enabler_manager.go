@@ -87,10 +87,10 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
-func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, externalNetwork string) {
+func (em *EnablerPlatformManager) CreateNetwork(useVolume bool) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, false, useVolume, externalNetwork)
+			network.InterfaceProvider.Create(em.UserId, false, useVolume)
 		}
 	}
 	// Things to do here
@@ -98,10 +98,10 @@ func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, externalNetwork 
 	// 1. calling the function for the blockchain network create.
 }
 
-func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool, externalNetwork string) {
+func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, true, false, externalNetwork)
+			network.InterfaceProvider.Create(em.UserId, true, false)
 		}
 	}
 }
@@ -220,6 +220,20 @@ func (em *EnablerPlatformManager) InviteOrganization(useVolume bool, file string
 	return nil
 }
 
+func (em *EnablerPlatformManager) SignOrganization(useVolume bool, file string,update bool) error {
+	if em.Enablers != nil {
+		for _, network := range em.Enablers {
+
+			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
+			return network.InterfaceProvider.Sign(em.UserId, useVolume, file,update)
+
+		}
+	}
+
+	// currently will just create a demo netowk and try to join using that network.
+	return nil
+}
+
 func (em *EnablerPlatformManager) AcceptNetwork(useVolume bool, zipFile string, basicSetup bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
@@ -233,7 +247,6 @@ func (em *EnablerPlatformManager) AcceptNetwork(useVolume bool, zipFile string, 
 	// currently will just create a demo netowk and try to join using that network.
 	return nil
 }
-
 
 func (em *EnablerPlatformManager) DeleteNetwork() error {
 	if em.Enablers != nil {
