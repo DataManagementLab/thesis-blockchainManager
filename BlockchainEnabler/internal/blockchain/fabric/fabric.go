@@ -320,14 +320,17 @@ func (f *FabricDefinition) Invite(userid string, useVolume bool, zipfile string)
 	var ownBlockchainDefinition interface{}
 	f.Deployer = getDeployerInstance(f.DeployerType)
 	f.fetchConfigBlock(userid)
+	zipFile := filepath.Base(zipfile)
+	zipFileSplit := strings.Split(strings.TrimSuffix(zipFile, filepath.Ext(zipFile)), "_")
+
 	enablerPath := filepath.Join(constants.EnablerDir, userid, f.Enabler.NetworkName, "enabler")
-	pathUser := filepath.Join(enablerPath, userid)
+	pathUser := filepath.Join(enablerPath, zipFileSplit[0])
 
 	// convert or transform this file specified in the path above
 	// f.transformDefinitionFile(file, orgName, userid)
 
 	// here it needs to copy the zip file unpack it load it into another folder and use the information provided in that folder -> read the network_config.json file.
-	f.unzipFile(zipfile, userid, userid)
+	f.unzipFile(zipfile, userid, zipFileSplit[0])
 	networkConfig := f.loadNetworkConfig(fmt.Sprintf("%s", filepath.Join(pathUser, "network_config.json")), userid)
 	ownNetworkConfig := f.loadNetworkConfig(fmt.Sprintf("%s", filepath.Join(enablerPath, "network_config.json")), userid)
 	// next load this file
@@ -399,12 +402,18 @@ func (f *FabricDefinition) Sign(userid string, useVolume bool, zipfile string, u
 	var networkName string
 	var ordererName string
 	var cafile string
-	var orgName string
+	// var orgName string
 	// takes in the zip file, checks participant list and signature, then signs it and uploads it / gives message with generated zip file to send to another org,
 	// read the zip file and take the .pb and .json files also identify the networkconfig file.
-	f.unzipFile(zipfile, userid, "sign")
+
+	// finding the filename for the zip file.
+
+	zipFile := filepath.Base(zipfile)
+	zipFileSplit := strings.Split(strings.TrimSuffix(zipFile, filepath.Ext(zipFile)), "_")
+
+	f.unzipFile(zipfile, userid, zipFileSplit[0])
 	enablerPath := filepath.Join(constants.EnablerDir, userid, f.Enabler.NetworkName, "enabler")
-	signPath := filepath.Join(enablerPath, "sign")
+	signPath := filepath.Join(enablerPath, zipFileSplit[0])
 
 	// go to the path for sign and then fetch the .pb file, transform, copy the file into the enabler path.
 
@@ -423,7 +432,7 @@ func (f *FabricDefinition) Sign(userid string, useVolume bool, zipfile string, u
 		networkName = networkConfig.NetworkName
 		ordererName = networkDetails.OrganizationInfo.OrdererName
 		cafile = fmt.Sprintf("%s_tlsca.example.com-cert.pem", networkName)
-		orgName = networkDetails.OrganizationInfo.OrganizationName
+		// orgName = networkDetails.OrganizationInfo.OrganizationName
 		transformFile(filepath.Join(signPath, cafile), filepath.Join(enablerPath, cafile))
 		// 	participatingOrgs := networkDetails.NetworkMembers
 		// 	fmt.Printf("%v", participatingOrgs)
@@ -435,7 +444,7 @@ func (f *FabricDefinition) Sign(userid string, useVolume bool, zipfile string, u
 	// transformFile()
 	if !update {
 		f.signConfig(fmt.Sprintf(envelopeName[0]))
-		createZipForSign(enablerPath, fmt.Sprintf(envelopeName[0]), fmt.Sprintf("signed_%s.json", envelopeNameWithoutExt), filepath.Join(signPath, "network_config.json"), cafile, orgName, networkName)
+		createZipForSign(enablerPath, fmt.Sprintf(envelopeName[0]), fmt.Sprintf("signed_%s.json", envelopeNameWithoutExt), filepath.Join(signPath, "network_config.json"), cafile, zipFileSplit[0], networkName)
 
 	} else {
 
