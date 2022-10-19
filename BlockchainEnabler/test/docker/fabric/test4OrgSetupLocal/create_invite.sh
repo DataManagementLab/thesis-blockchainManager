@@ -17,7 +17,6 @@ go run main.go invite -u kinshuk -z ~/.enabler/platform/simon/simon_network1/ena
 
 go run main.go sign -u ashwin -z ~/.enabler/platform/kinshuk/kinshuk_network1/enabler/simonOrg1_sign_transfer.zip
 
-go run main.go accept -u simon -z ~/.enabler/platform/kinshuk/kinshuk_network1/enabler/kinshukOrg1_accept_transfer.zip
-
 go run main.go sign -u muhammad --update -z ~/.enabler/platform/ashwin/ashwin_network1/enabler/simonOrg1_sign_transfer.zip
 
+go run main.go accept -u simon -z ~/.enabler/platform/kinshuk/kinshuk_network1/enabler/kinshukOrg1_accept_transfer.zip
