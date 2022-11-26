@@ -36,7 +36,7 @@ func GetInstance(logger *zerolog.Logger) *EnablerPlatformManager {
 }
 
 // This function initializes the Enabler Platform.
-func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMembers int, initOptions *conf.InitializationOptions) (err error) {
+func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMembers int, initOptions *conf.InitializationOptions, localSetup bool) (err error) {
 
 	em.UserId = userId
 	var e = new(types.Network)
@@ -77,7 +77,7 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	}
 
 	//  create a function which checks the ports and pass this function to the init.
-	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume, initOptions.BasicSetup); err != nil {
+	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume, initOptions.BasicSetup, localSetup); err != nil {
 		return err
 	}
 	if err := em.writePlatformInfo(e); err != nil {
@@ -220,12 +220,12 @@ func (em *EnablerPlatformManager) InviteOrganization(useVolume bool, file string
 	return nil
 }
 
-func (em *EnablerPlatformManager) SignOrganization(useVolume bool, file string,update bool) error {
+func (em *EnablerPlatformManager) SignOrganization(useVolume bool, file string, update bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Sign(em.UserId, useVolume, file,update)
+			return network.InterfaceProvider.Sign(em.UserId, useVolume, file, update)
 
 		}
 	}

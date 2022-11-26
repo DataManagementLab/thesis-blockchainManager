@@ -70,7 +70,7 @@ var chaincodeImplementation string
 var userIdentification string
 var verbose bool
 
-func (f *FabricDefinition) Init(userId string, useVolume bool, basicSetup bool) (err error) {
+func (f *FabricDefinition) Init(userId string, useVolume bool, basicSetup bool, localSetup bool) (err error) {
 
 	//Steps to follow:
 	// Basic step to fetch the deployer instance.
@@ -95,7 +95,7 @@ func (f *FabricDefinition) Init(userId string, useVolume bool, basicSetup bool) 
 	if err := f.writeConfigs(userId, f.Enabler.Members[0], basicSetup); err != nil {
 		return err
 	}
-	f.generateCryptoMaterial(userId, useVolume)
+	f.generateCryptoMaterial(userId, useVolume, localSetup)
 	// Need to call the deployer-> which can be anything from kubernetes to docker -> depending on the user choice.
 	// by default it is docker
 	// getDeployerInstance("docker")
@@ -224,6 +224,13 @@ func (f *FabricDefinition) setValidPorts() {
 	}
 }
 func setExternalPorts(mem *types.Member) map[string]int {
+	platformDir := filepath.Join(constants.EnablerDir)
+	dir, err := os.ReadDir(platformDir)
+	if err != nil {
+		panic(err)
+	}
+	count := len(dir)
+	fmt.Println(" The current count", count)
 	external := map[string]int{
 		"ca_server_port":                       7054,
 		"ca_operations_listen_port":            17054,
@@ -233,6 +240,13 @@ func setExternalPorts(mem *types.Member) map[string]int {
 		"core_peer_listen_address_gossip_port": 7051,
 		"core_peer_chaincode_listen_port":      7052,
 		"core_operations_listen_port":          17051,
+		"core_peer_listen":                     7051 + count*100,
+		"core_peer_operation":                  17051 + count*100,
+		"orderer_general":                      7050 + count*100,
+		"orderer_admin":                        7053 + count*100,
+		"orderer_operations":                   17050 + count*100,
+		"ca_server":                            7054 + count*100,
+		"ca_operations":                        17054 + count*100,
 	}
 	return external
 
@@ -507,16 +521,19 @@ func (f *FabricDefinition) Delete(userId string) (err error) {
 	// Basic step to fetch the deployer instance.\return nil
 	f.Deployer = getDeployerInstance(f.DeployerType)
 	userIdentification = userId
-	workingDir := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName)
+	userDir := path.Join(constants.EnablerDir, userId)
+	workingDir := path.Join(userDir, f.Enabler.NetworkName)
 	if err := f.Deployer.Terminate(workingDir); err != nil {
 		return err
 	}
-
 	err = os.RemoveAll(workingDir)
 	if err != nil {
 		return err
 	}
-
+	err = os.RemoveAll(userDir)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1489,7 +1506,7 @@ func createNewContext(configProvider core.ConfigProvider, blockchainDirectoryPat
 }
 
 // setting up the docker container and the volume and running the cryptogen configs
-func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool) (err error) {
+func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool, localSetup bool) (err error) {
 	blockchainDirectory := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "blockchain")
 	enablerPath := path.Join(constants.EnablerDir, userId, f.Enabler.NetworkName, "enabler")
 	cryptogenYamlPath := path.Join(blockchainDirectory, "cryptogen.yaml")
@@ -1522,7 +1539,12 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool)
 	}
 	fmt.Printf("Check for network")
 	if err := docker.InspectNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true); err != nil {
-		docker.CreateOverlayNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true)
+		if localSetup {
+			docker.CreateNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true)
+
+		} else {
+			docker.CreateOverlayNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true)
+		}
 	}
 	fmt.Printf(" %s\n", cmd)
 	out, err := cmd.Output()
