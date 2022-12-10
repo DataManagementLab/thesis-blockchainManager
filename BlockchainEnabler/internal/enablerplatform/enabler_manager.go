@@ -36,7 +36,7 @@ func GetInstance(logger *zerolog.Logger) *EnablerPlatformManager {
 }
 
 // This function initializes the Enabler Platform.
-func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMembers int, initOptions *conf.InitializationOptions) (err error) {
+func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMembers int, initOptions *conf.InitializationOptions, localSetup bool) (err error) {
 
 	em.UserId = userId
 	var e = new(types.Network)
@@ -77,7 +77,7 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	}
 
 	//  create a function which checks the ports and pass this function to the init.
-	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume, initOptions.BasicSetup); err != nil {
+	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume, initOptions.BasicSetup, localSetup); err != nil {
 		return err
 	}
 	if err := em.writePlatformInfo(e); err != nil {
@@ -87,10 +87,10 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
-func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, externalNetwork string) {
+func (em *EnablerPlatformManager) CreateNetwork(useVolume bool) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, false, useVolume, externalNetwork)
+			network.InterfaceProvider.Create(em.UserId, false, useVolume)
 		}
 	}
 	// Things to do here
@@ -98,10 +98,10 @@ func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, externalNetwork 
 	// 1. calling the function for the blockchain network create.
 }
 
-func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool, externalNetwork string) {
+func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool) {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			network.InterfaceProvider.Create(em.UserId, true, false, externalNetwork)
+			network.InterfaceProvider.Create(em.UserId, true, false)
 		}
 	}
 }
@@ -206,12 +206,12 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) InviteOrganization(useVolume bool, file string) error {
+func (em *EnablerPlatformManager) AddOrganization(useVolume bool, file string) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Invite(em.UserId, useVolume, file)
+			return network.InterfaceProvider.Add(em.UserId, useVolume, file)
 
 		}
 	}
@@ -220,12 +220,12 @@ func (em *EnablerPlatformManager) InviteOrganization(useVolume bool, file string
 	return nil
 }
 
-func (em *EnablerPlatformManager) AcceptNetwork(useVolume bool, zipFile string, basicSetup bool) error {
+func (em *EnablerPlatformManager) SignOrganization(useVolume bool, file string, update bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Accept(em.UserId, useVolume, zipFile, basicSetup)
+			return network.InterfaceProvider.Sign(em.UserId, useVolume, file, update)
 
 		}
 	}
@@ -233,7 +233,6 @@ func (em *EnablerPlatformManager) AcceptNetwork(useVolume bool, zipFile string, 
 	// currently will just create a demo netowk and try to join using that network.
 	return nil
 }
-
 
 func (em *EnablerPlatformManager) DeleteNetwork() error {
 	if em.Enablers != nil {
@@ -249,26 +248,12 @@ func (em *EnablerPlatformManager) DeleteNetwork() error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, useVolume bool, invitePhase bool) error {
+func (em *EnablerPlatformManager) JoinNetwork(useVolume bool, zipFile string, basicSetup bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Join(networkId, orgName, em.UserId, useVolume, invitePhase)
-
-		}
-	}
-
-	// currently will just create a demo netowk and try to join using that network.
-	return nil
-}
-
-func (em *EnablerPlatformManager) RequestNetwork(networkId string, orgName string, useVolume bool, file string) error {
-	if em.Enablers != nil {
-		for _, network := range em.Enablers {
-
-			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Request(networkId, orgName, em.UserId, useVolume, file)
+			return network.InterfaceProvider.Join(em.UserId, useVolume, zipFile, basicSetup)
 
 		}
 	}

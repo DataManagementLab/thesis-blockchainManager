@@ -54,8 +54,8 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 					"FABRIC_CA_SERVER_CA_KEYFILE":               fmt.Sprintf("/etc/enabler/organizations/peerOrganizations/%s/ca/priv_sk", orgDomain),
 				},
 				Ports: []string{
-					fmt.Sprintf("%d:%d", external["ca_server_port"], external["ca_server_port"]),
-					fmt.Sprintf("%d:%d", external["ca_operations_listen_port"], external["ca_operations_listen_port"]),
+					fmt.Sprintf("%d:%d", external["ca_server"], external["ca_server_port"]),
+					fmt.Sprintf("%d:%d", external["ca_operations"], external["ca_operations_listen_port"]),
 				},
 				Command: "sh -c 'fabric-ca-server start -b admin:adminpw'",
 				Volumes: []string{
@@ -106,9 +106,9 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 					fmt.Sprintf("%s:/var/hyperledger/production/orderer", member.OrdererName),
 				},
 				Ports: []string{
-					fmt.Sprintf("%d:%d", external["orderer_general_listen_port"], external["orderer_general_listen_port"]),
-					fmt.Sprintf("%d:%d", external["orderer_admin_listen_port"], external["orderer_admin_listen_port"]),
-					fmt.Sprintf("%d:%d", external["orderer_operations_listen_port"], external["orderer_operations_listen_port"]),
+					fmt.Sprintf("%d:%d", external["orderer_general"], external["orderer_general_listen_port"]),
+					fmt.Sprintf("%d:%d", external["orderer_admin"], external["orderer_admin_listen_port"]),
+					fmt.Sprintf("%d:%d", external["orderer_operations"], external["orderer_operations_listen_port"]),
 				},
 				DockerNetworkNames: serviceNetworks,
 			},
@@ -148,8 +148,8 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 					"/var/run/docker.sock:/host/var/run/docker.sock",
 				},
 				Ports: []string{
-					fmt.Sprintf("%d:%d", external["core_peer_listen_address_gossip_port"], external["core_peer_listen_address_gossip_port"]),
-					fmt.Sprintf("%d:%d", external["core_operations_listen_port"], external["core_operations_listen_port"]),
+					fmt.Sprintf("%d:%d", external["core_peer_listen"], external["core_peer_listen_address_gossip_port"]),
+					fmt.Sprintf("%d:%d", external["core_peer_operation"], external["core_operations_listen_port"]),
 				},
 				DockerNetworkNames: serviceNetworks,
 			},
@@ -189,8 +189,8 @@ func GenerateServiceDefinitions(member *types.Member, memberId string, useVolume
 					"/var/run/docker.sock:/host/var/run/docker.sock",
 				},
 				Ports: []string{
-					fmt.Sprintf("%d:%d", 7151, external["core_peer_listen_address_gossip_port"]),
-					fmt.Sprintf("%d:%d", 17151, external["core_operations_listen_port"]),
+					fmt.Sprintf("%d:%d", external["core_peer_listen"], external["core_peer_listen_address_gossip_port"]),
+					fmt.Sprintf("%d:%d", external["core_peer_operation"], external["core_operations_listen_port"]),
 				},
 				DockerNetworkNames: serviceNetworks,
 			},
@@ -215,14 +215,13 @@ func (fabDocker *FabricDocker) Deploy(workingDir string) error {
 }
 
 func (fabDocker *FabricDocker) Terminate(workingDir string) error {
-	
+
 	err := docker.RunDockerComposeCommand(workingDir, true, true, "down", "-v")
 	if err != nil {
 		return err
 	}
 	return nil
 }
-
 
 func (fabDocker *FabricDocker) GenerateFiles(enabler *types.Network, userId string, useVolume bool, basicSetup bool) (err error) {
 

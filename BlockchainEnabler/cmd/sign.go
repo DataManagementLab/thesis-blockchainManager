@@ -22,13 +22,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var acceptPlatformManager *enablerplatform.EnablerPlatformManager
-var zipFile string
-var basic bool
+var signPlatformManager *enablerplatform.EnablerPlatformManager
+var update bool
 
-// acceptCmd represents the accept command
-var acceptCmd = &cobra.Command{
-	Use:   "accept",
+// signCmd represents the sign command
+var signCmd = &cobra.Command{
+	Use:   "sign",
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
@@ -37,27 +36,30 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("accept called")
+		fmt.Println("sign called")
 
-		acceptPlatformManager = enablerplatform.GetInstance(&logger)
-		acceptPlatformManager.LoadUser("", userId)
+		signPlatformManager = enablerplatform.GetInstance(&logger)
+		signPlatformManager.LoadUser("", userId)
 		// logger.Printf(invitePlatformManager.UserId)
-		acceptPlatformManager.AcceptNetwork(useVolume, zipFile, basic)
+		signPlatformManager.SignOrganization(useVolume, file,update)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(acceptCmd)
-	acceptCmd.Flags().StringVarP(&userId, "userId", "u", "", "The User ID for the user.")
-	acceptCmd.Flags().StringVarP(&zipFile, "zipFile", "z", "", "The zip of the files needed.")
-	acceptCmd.Flags().BoolVarP(&basic, "simpleSetup", "s", false, "Function to enable or disable the use of Basic setup default: false")
+	rootCmd.AddCommand(signCmd)
+
+	// Need to define the sign command, pass the zip file for the sign containing the information.
+	signCmd.Flags().StringVarP(&userId, "userId", "u", "", "The User ID for the user.")
+	signCmd.Flags().StringVarP(&file, "zipfile", "z", "", "zip file containing the relevant information.")
+	signCmd.Flags().BoolVar(&update, "update", false, "Update flag is used by the last Organization to sign.")
+
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// acceptCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// signCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// acceptCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// signCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

@@ -1,14 +1,12 @@
 package blockchain
 
 type IProvider interface {
-	Init(string, bool, bool) error
-	Create(string, bool, bool, string) error
-	Join(string, string, string, bool, bool) error
+	Init(string, bool, bool, bool) error
+	Create(string, bool, bool) error
+	Join(string, bool, string, bool) error
 	Leave(string, string, string, bool, bool) error
-	Invite(string, bool, string) error
-	Request(string, string, string, bool, string) error
-
-	Accept(string, bool, string, bool) error
+	Sign(string, bool, string, bool) error
+	Add(string, bool, string) error
 	Delete(string) error
 
 	// WriteConfigs() error

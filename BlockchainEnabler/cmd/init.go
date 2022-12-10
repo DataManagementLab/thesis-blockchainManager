@@ -37,6 +37,7 @@ var organizationName string
 var promptNames bool
 var platformManager *enablerplatform.EnablerPlatformManager
 var basicSetup bool
+var localSetup bool
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
@@ -101,7 +102,7 @@ var initCmd = &cobra.Command{
 		initOptions.BlockchainType, _ = types.BlockchainProviderSelection(selectedBlockchain)
 		platformManager = enablerplatform.GetInstance(&logger)
 		//  Initialization of the Enabler Platform
-		platformManager.InitEnablerPlatform(userId, memberCount, &initOptions)
+		platformManager.InitEnablerPlatform(userId, memberCount, &initOptions, localSetup)
 		// Initilization of all the components needed to run, which involves the creation of the docker yaml file and other stuff.
 		//  this will only create the docker yaml file wont be responsible for running the network.
 		return nil
@@ -147,6 +148,8 @@ func init() {
 	initCmd.Flags().StringVarP(&networkID, "networkID", "n", "", "Provide the name for the network.")
 	initCmd.Flags().StringVarP(&organizationName, "orgName", "o", "", "Provide the name for the organization default value org1.")
 	initCmd.Flags().BoolVarP(&basicSetup, "simpleSetup", "s", false, "Choose this to form a network without the orderer.")
+	initCmd.Flags().BoolVar(&localSetup, "local", false, "Select this to run the setup on a local network.")
+
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
