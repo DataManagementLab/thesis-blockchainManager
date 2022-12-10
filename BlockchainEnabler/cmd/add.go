@@ -22,13 +22,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var acceptPlatformManager *enablerplatform.EnablerPlatformManager
-var zipFile string
-var basic bool
+var invitePlatformManager *enablerplatform.EnablerPlatformManager
+var file string
+var ordererInfo string
 
-// acceptCmd represents the accept command
-var acceptCmd = &cobra.Command{
-	Use:   "accept",
+// addCmd represents the add command
+var addCmd = &cobra.Command{
+	Use:   "add",
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
@@ -37,27 +37,27 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("accept called")
+		fmt.Println("Add called")
 
-		acceptPlatformManager = enablerplatform.GetInstance(&logger)
-		acceptPlatformManager.LoadUser("", userId)
+		invitePlatformManager = enablerplatform.GetInstance(&logger)
+		invitePlatformManager.LoadUser("", userId)
 		// logger.Printf(invitePlatformManager.UserId)
-		acceptPlatformManager.AcceptNetwork(useVolume, zipFile, basic)
+		invitePlatformManager.AddOrganization(useVolume, file)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(acceptCmd)
-	acceptCmd.Flags().StringVarP(&userId, "userId", "u", "", "The User ID for the user.")
-	acceptCmd.Flags().StringVarP(&zipFile, "zipFile", "z", "", "The zip of the files needed.")
-	acceptCmd.Flags().BoolVarP(&basic, "simpleSetup", "s", false, "Function to enable or disable the use of Basic setup default: false")
+	rootCmd.AddCommand(addCmd)
+	addCmd.Flags().StringVarP(&userId, "userId", "u", "", "The User ID for the user.")
+	addCmd.Flags().StringVarP(&file, "zipfile", "z", "", "zip file containing the relevant information.")
+
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// acceptCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// addCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// acceptCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// addCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

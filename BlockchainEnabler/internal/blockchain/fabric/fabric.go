@@ -325,7 +325,7 @@ func packageChaincodeImplementation(enablerPath string) {
 		log.Println(err)
 	}
 }
-func (f *FabricDefinition) Invite(userid string, useVolume bool, zipfile string) (err error) {
+func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string) (err error) {
 	userIdentification = userid
 	verbose = true
 	// var networkDetails  *types.FabricDefinition
@@ -582,7 +582,7 @@ func transformFile(sourcePath string, dstPath string) {
 	}
 }
 
-func (f *FabricDefinition) Accept(userid string, useVolume bool, zipFile string, basicSetup bool) (err error) {
+func (f *FabricDefinition) Join(userid string, useVolume bool, zipFile string, basicSetup bool) (err error) {
 	f.UseVolume = useVolume
 	verbose = true
 	var blockchaindefinition interface{}
@@ -727,90 +727,6 @@ func (f *FabricDefinition) unzipFile(zipFile string, userId string, destinationF
 	//  unzip the file first in a folder and then copy it to the required directory, also check if nothing is missing or not.
 }
 
-func (f *FabricDefinition) Request(networkId string, orgName string, userid string, useVolume bool, file string) (err error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:9090")
-	if err != nil {
-		log.Fatal(err)
-
-	}
-	log.Println("Server listening on: " + listener.Addr().String())
-	done := make(chan struct{})
-	go func() {
-		defer func() { done <- struct{}{} }()
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			go func(c net.Conn) {
-				defer func() {
-					c.Close()
-					done <- struct{}{}
-				}()
-				buf := make([]byte, 1024)
-				for {
-					n, err := c.Read(buf)
-					if err != nil {
-						if err != io.EOF {
-							log.Println(err)
-						}
-						return
-					}
-					log.Printf("received: %q", buf[:n])
-					log.Printf("bytes: %d", n)
-				}
-			}(conn)
-		}
-	}()
-
-	return nil
-
-}
-func (f *FabricDefinition) Join(networkId string, orgName string, userid string, useVolume bool, invitePhase bool) (err error) {
-	// Starting step would be to check if the network is already present and if so then it would kind of load the network.(Dont exactly know how it should load the network)
-	// The first step can be to try to get the location for the org and then using the tool to generate the files needed.
-	// the files which are needed are the crypto, configtx, docker-compose.
-	// Currently we will just load these files and not create them.
-	userIdentification = userid
-	verbose = true
-	f.UseVolume = useVolume
-	f.Deployer = getDeployerInstance(f.DeployerType)
-	// First checking if the network is already present, other wise creating the org3 structure
-
-	// THis is for creating the other organization, which is not needed now.
-
-	// The previous step should be asynchronous though
-
-	// Steps done by the Organization after
-	if invitePhase {
-		// f.createOrganizationForJoin(userid, networkId, orgName)
-		f.fetchConfigBlock(userid)
-
-		f.envelopeBlockCreation(userid, networkId, orgName)
-		f.signConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName))
-		// f.signAndUpdateConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName))
-		// f.loadGenesisFileToOrg(networkId)
-	} else {
-		// workingDir := path.Join(constants.EnablerDir, userid, networkId)
-
-		// f.Deployer.Deploy(workingDir)
-		f.joinOtherOrgPeerToChannel(userid, networkId, orgName)
-
-		f.createAnchorPeer(userid, networkId, orgName)
-	}
-
-	// Run the docker compose from the org3 -> container
-	//  Next join the channel from org3 peer.
-
-	// Bring up the docker compose file , the container and try to join the channel using the container
-	// Currently there is a probelm with the peer channel fetch config -|> As the config is unable to be fetched
-	// Next steps would be to add the anchor peer for the organization 3.
-
-	// So go to the folder structure and then create a docker instance and then create a volume, copy files in the volume. -> crypto, configtx
-	// Once volume is done then create the crypto files using crypto command.
-	return nil
-}
 func (f *FabricDefinition) Leave(networkId string, orgName string, userId string, useVolume bool, finalize bool) error {
 	userIdentification = userId
 	verbose = true

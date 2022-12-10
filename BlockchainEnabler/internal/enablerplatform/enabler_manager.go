@@ -206,12 +206,12 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) InviteOrganization(useVolume bool, file string) error {
+func (em *EnablerPlatformManager) AddOrganization(useVolume bool, file string) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Invite(em.UserId, useVolume, file)
+			return network.InterfaceProvider.Add(em.UserId, useVolume, file)
 
 		}
 	}
@@ -234,20 +234,6 @@ func (em *EnablerPlatformManager) SignOrganization(useVolume bool, file string, 
 	return nil
 }
 
-func (em *EnablerPlatformManager) AcceptNetwork(useVolume bool, zipFile string, basicSetup bool) error {
-	if em.Enablers != nil {
-		for _, network := range em.Enablers {
-
-			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Accept(em.UserId, useVolume, zipFile, basicSetup)
-
-		}
-	}
-
-	// currently will just create a demo netowk and try to join using that network.
-	return nil
-}
-
 func (em *EnablerPlatformManager) DeleteNetwork() error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
@@ -262,26 +248,12 @@ func (em *EnablerPlatformManager) DeleteNetwork() error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) JoinNetwork(networkId string, orgName string, useVolume bool, invitePhase bool) error {
+func (em *EnablerPlatformManager) JoinNetwork(useVolume bool, zipFile string, basicSetup bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
 
 			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Join(networkId, orgName, em.UserId, useVolume, invitePhase)
-
-		}
-	}
-
-	// currently will just create a demo netowk and try to join using that network.
-	return nil
-}
-
-func (em *EnablerPlatformManager) RequestNetwork(networkId string, orgName string, useVolume bool, file string) error {
-	if em.Enablers != nil {
-		for _, network := range em.Enablers {
-
-			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Request(networkId, orgName, em.UserId, useVolume, file)
+			return network.InterfaceProvider.Join(em.UserId, useVolume, zipFile, basicSetup)
 
 		}
 	}

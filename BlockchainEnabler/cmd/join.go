@@ -23,12 +23,8 @@ import (
 )
 
 var joinPlatformManager *enablerplatform.EnablerPlatformManager
-var orgName string
-var joiningOrgName string
-var networkId1 string
-var networkId2 string
-var invite bool
-var accept bool
+var zipFile string
+var basic bool
 
 // var finalize bool
 
@@ -55,17 +51,8 @@ to quickly create a Cobra application.`,
 
 		joinPlatformManager = enablerplatform.GetInstance(&logger)
 		joinPlatformManager.LoadUser("", userId)
-		fmt.Println("Value of use Volume", useVolume)
-		// joinPlatformManager.Options.UseVolume = useVolume
-
-		logger.Printf(joinPlatformManager.UserId)
-		fmt.Println("Value for prepareation ",invite)
-		if invite{
-			accept = false
-		}else{
-			accept = true
-		}
-		joinPlatformManager.JoinNetwork(networkId, orgName, useVolume,invite)
+		// logger.Printf(invitePlatformManager.UserId)
+		joinPlatformManager.JoinNetwork(useVolume, zipFile, basic)
 
 	},
 }
@@ -75,13 +62,10 @@ func init() {
 	// create two flag here 1 flag is for providing the name of the org which has to be joined and the next the name of the org1
 
 	joinCmd.Flags().StringVarP(&userId, "userId", "u", "", "The User ID for the user.")
+	joinCmd.Flags().StringVarP(&zipFile, "zipFile", "z", "", "The zip of the files needed.")
+	joinCmd.Flags().BoolVarP(&basic, "simpleSetup", "s", false, "Function to enable or disable the use of Basic setup default: false")
 
-	joinCmd.Flags().StringVarP(&orgName, "orgName", "o", "", "The organization name which wants to join the network.")
-	joinCmd.Flags().StringVarP(&networkId, "networkId", "n", "", "The Network the organization which wants to join another network.")
-	joinCmd.Flags().BoolVar(&invite, "invite", false, "Function to tell which phase it is. This stage is run by the org which is to be joined.")
-	joinCmd.Flags().BoolVar(&accept, "accept", false, "Accept phase is when the joining org join the network.")
 	// joinCmd.Flags().StringVar(&configFile,"config","","Provide the config file needed to add Organization in network.")
-	
 
 	// joinCmd.Flags().BoolVarP(&finalize, "finalize", "f", false, "This phase runs on the behalf of the joining network.")
 
