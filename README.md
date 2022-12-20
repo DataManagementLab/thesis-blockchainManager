@@ -1,27 +1,23 @@
 # Blockchain Enabler Platform
 
-Blockchain Enabler platform is a command line tool which allows users to create and manage Permissioned Blockchain Network in a distributed manner. It provides interface for interacting with the blockchain frameworks and also enables the user to join another Blockchain Network. 
+Blockchain Enabler platform is a command line tool which allows users to create and manage Permissioned Blockchain Network in a distributed manner. It provides interface for interacting with the blockchain frameworks and also enables the user to join another Blockchain Network.
 
-Current implementation provides support for [Hyperledger fabric](https://www.hyperledger.org/use/fabric). 
+Current implementation provides support for [Hyperledger fabric](https://www.hyperledger.org/use/fabric).
 
 ## Table of Contents
 
-1. Introduction to Project
-2. Motivation behind Project
-3. Requirements for the project
-4. Setting Up Project 
-  4.1 Installations
-  4.2 Things to consider
-5. How to use the Project
-6. Running the project
-7. Infrastructure of the Project
-8. Conclusion
-9. License
+1. [Introduction to Project](#introduction)
+2. [Motivation behind Project](#motivation)
+3. [Prerequisites for the project](#prerequisites)
+4. [How to use the Project](#how-to-use-the-project)
+5. [Running the project](#running-the-project)
+6. [Addition Information on the Commands](#additional-information-on-the-commands)
+7. [License](#license)
 
 ## Introduction
 
 The Blockchain Enabler Platform serves as a tool for creating and managing blockchain network.
-It provides the user ease to create a network and invite other parties to join this network. 
+It provides the user ease to create a network and invite other parties to join this network.
 It is made for enterprises and organizations which wish to collaborate with other organizations over a secure channel. The organizations can form a group maintain different channel for communication with each other.
 
 <!-- The project utilizes go module [cobra](https://pkg.go.dev/github.com/spf13/cobra)
@@ -29,7 +25,7 @@ The language of implementation in entirety is [golang](https://go.dev/).
 It also utilizes containers to create the network using [docker](https://docs.docker.com/).
 The documentation is done using the [godoc](https://go.dev/blog/godoc) -->
 
-The project allows the user to create private blockchain networks using [Hyperledger fabric](https://www.hyperledger.org/use/fabric. The Hyperledger fabric network is chosen and created by default. However the platform is extendable to other blockchain frameworks as [Ethereum](https://ethereum.org/en/) and others.
+The project allows the user to create private blockchain networks using [Hyperledger fabric](https://www.hyperledger.org/use/fabric). The Hyperledger fabric network is chosen and created by default. However the platform is extendable to other blockchain frameworks as [Ethereum](https://ethereum.org/en/) and others.
 
 The project is takes the inspiration from [Hyperledger Firefly Cli](https://github.com/hyperledger/firefly-cli).
 
@@ -37,25 +33,23 @@ The project is takes the inspiration from [Hyperledger Firefly Cli](https://gith
 
 The key motivation behind this project is to make make the interaction with blockchain simpler by defining a interface which is consistent accross all blockchain frameworks.
 
-The platform aims at providing a decentralized platform for creating and joining the network, where no central entity is entirely responsible to initiating the communication between the parties. 
+The platform aims at providing a decentralized platform for creating and joining the network, where no central entity is entirely responsible to initiating the communication between the parties.
 <!-- 
 The user can also deploy their [smart contract](https://www.ibm.com/topics/smart-contracts) on the network and interact with it using the nodes. -->
 
+## Prerequisites
 
-## Requirements
 The project requires some dependencies to be installed before using this platform.
 
-1. [Docker](https://docs.docker.com/get-docker/)
-2. [Docker compose](https://docs.docker.com/compose/install/)
-3. [Golang](https://go.dev/doc/install)
+If the dependencies are already installed in your setup, then you can directly proceed to [Running the Project]()
 
-## Setting up Project
+1. [Golang](#golang)
+2. [Docker](#docker)
+3. [Docker compose](#docker-compose)
 
 The setup considers Ubuntu 20.04 LTS Virtual Machine and the software installation guides are based on it.
 
-### Installations
-
-1. Golang
+### Golang
 
 * To install golang in your system, refer to this [page](https://go.dev/dl/)
 
@@ -73,6 +67,7 @@ mkdir -p $HOME/go/{bin,src,pkg}
 ```
 
 * Also add the environment variables to your bash_rc
+
 ```bash
  <!-- Go environment -->
 export GOROOT=/usr/local/go
@@ -82,21 +77,27 @@ export GOBIN=$GOPATH/bin
 export PATH=$PATH:$GOROOT/bin
 
 ```
+
 * After updating the environment variable, run  
-```bash 
+
+```bash
 ~/.bash_rc
 ```
+
 * To check if golang is successfully installed in the system, use the below command.
+
 ```bash
 go version
 ```
+
 * Use this tutorial for more [help](https://shakib37.medium.com/how-to-install-golang-f8cbe15baa7c)
 
-2. Docker
+### Docker
 
 * To install docker, use docker installation [tutorial](https://docs.docker.com/engine/install/ubuntu/)
 
 * Refer to the documentation below for installing docker on linux machine
+
 ```bash
 
 sudo apt-get update
@@ -116,7 +117,8 @@ echo \
   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 ```
-* You need to install the docker engine, to do that refer below. 
+
+* You need to install the docker engine, to do that refer below.
 
 ```bash
 
@@ -125,13 +127,14 @@ sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 ```
 
-3. Docker compose
+### Docker compose
 
-* Docker compose needs to be installed for the setup to work, to do so, 
-For more information on this process, look through the documentation for [installing docker compose on Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-compose-on-ubuntu-20-04)
+* Docker compose needs to be installed for the setup to work
 
+* For more information on this process, look through the documentation for [installing docker compose on Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-compose-on-ubuntu-20-04)
 
 * Follow the steps below for installing it on the machine.  
+
 ```bash
 
 sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
@@ -140,6 +143,7 @@ sudo chmod +x /usr/local/bin/docker-compose
 
 
 ```
+
 * To check for successful installation of docker compose, use command below.
 
 ```bash
@@ -148,24 +152,17 @@ docker compose --version
 
 ### Things to consider while running this Project
 
-Note: An important information to consider while trying to run this project is that, the docker in itself does not have the sudo permissions.
-
-Thus it is not allowed to do its tasks, so we need to create another group wherein we provide docker with the right permission allowing docker to run on the machine.
-
-In order to do so, I can recommend an article which would [help](https://adamtheautomator.com/docker-permission-denied/)
-
-If not done will provide us an error that docker does not have enough priviledges.
-
-This can be checked by running the 
+* If you receive an error message that docker does not have enough priviledges after running the command below, it means you need to provide sudo rights to run docker in the system.
 
 ```bash
 docker run hello-world
 ```
 
-This command should create a container print the contents and then exit the container.
-However if it gives error regarding the priviledges, that means docker does not have the appropriate priviledges to function.
+* Docker does not have the sudo rights by default, so you need to provide sudo rights to docker.
 
-We can do the steps below so the error doesnot occur again.
+* In order to do so, refer to this article for [help](https://adamtheautomator.com/docker-permission-denied/)
+
+* To provide the sudo rights, use the commands below.
 
 ```bash
 
@@ -173,20 +170,20 @@ sudo groupadd docker
 
 sudo usermod -aG docker ${USERID}
 
-# sudo usermod -a -G sudo ${USERID}
-
 sudo newgrp docker 
 
 ```
-You might need to restart the system after this.
+
+* You might need to restart the system after this.
 
 ## How to use the project
 
-* Once you have all the prerequisites installed in the system, you are good to go. 
+* Once you have all the prerequisites installed in the system, you are good to go.
 
 * To use the system, **clone** the project and open it in a IDE locally.
 
 * Navigate to the project location and use the command below with different cli options.
+
 ```bash
 
 go run main.go
@@ -197,7 +194,6 @@ go run main.go
 <!-- Give an idea or a view of the commands that are present a brief overview of each of them -->
 
 The Command line supports different commands and options:
-
 
 **init** This is used to initialize the network and create the organization for the network. It is the preparatory phase for the network and generates the necessary configurations for the network and organization.
 
@@ -213,12 +209,11 @@ The Command line supports different commands and options:
 
 **sign** Sign command is used to sign the transaction by the members of the network to reach consensus. 
 
-
-## Setting up the project ##
+## Running the project ##
 
 The setup can be done locally or remotely depending on whether the user wants the network to be joined by another organization remotely.
 
-### Local Setup ###
+<!-- ### Local Setup ###
 
 Local setup helps create a network locally.
 
@@ -254,9 +249,9 @@ go run main.go init ${USERNAME}
 create network
 ```cli
 go run main.go create -u ${USERID} -n ${NETWORK_NAME}
-```
+``` -->
 
-## Setting a two organization network on local ## 
+### Running a two organization network locally ## 
 
 * This is a guide for setting up a network locally and enabling other organization to join this network.
 
@@ -269,9 +264,9 @@ go run main.go create -u ${USERID} -n ${NETWORK_NAME}
 * Now we **initialize** both **CompanyA** and **CompanyB** using command below.
 
 ```bash
-go run main.go init CompanyA
+go run main.go init CompanyA --local
 
-go run main.go init CompanyB
+go run main.go init CompanyB --local
 
 ```
 
@@ -299,7 +294,7 @@ go run main.go create -u CompanyB
 
 * So far we have CompanyA_network1 created by the organization CompanyA_Organization and CompanyB_network1 created by the organization CompanyB_Organization.
 
-* These two networks and organizations function independently of each other. 
+* These two networks and organizations function independently of each other.
 
 --- add ---
 
@@ -307,8 +302,7 @@ go run main.go create -u CompanyB
 
 * Now we consider the case where CompanyBOrg1 wishes to collaborate with CompanyAOrg1 by joining its network CompanyA_Network1.
 
-* For this CompanyBOrg1 needs to send the invite file to the CompanyAOrg1 which can be found inside the 
-filepath as ~$HOME/.enabler/platform/{userid}/${network_name}/enabler/ {$OrganizationName}_invite.zip
+* For this CompanyBOrg1 needs to send the invite file to the CompanyAOrg1 which can be found inside the filepath as ~$HOME/.enabler/platform/{userid}/${network_name}/enabler/ {$OrganizationName}_invite.zip
 
 * We assume formal communication between CompanyA and CompanyB for tranferring the zip files.
 
@@ -325,7 +319,7 @@ go run main.go add -u CompanyA -z /path_to_/CompanyBOrg1_invite.zip
 
 --- join ---
 
-* After the CompanyAOrg1 has successfully added CompanyBOrg1 to the network, the CompanyBOrg1 can now join the network. 
+* After the CompanyAOrg1 has successfully added CompanyBOrg1 to the network, the CompanyBOrg1 can now join the network.
 
 * For this CompanyBOrg1 requires the acceptance file from CompanyAOrg1 which contains information about the network. This zip file is generated in the create phase for CompanyA with name CompanyAOrg1_accept_transfer.zip.
 
@@ -337,6 +331,7 @@ go run main.go add -u CompanyA -z /path_to_/CompanyBOrg1_invite.zip
 go run main.go join -u CompanyB -z /path_to_/CompanyAOrg1_accept_transfer.zip
 
 ```
+
 * With this the CompanyBOrg1 is also part of the CompanyA_network1 and can collaborate with CompanyAOrg1 on it.
 
 ![TwoOrganizationSetup](https://i.ibb.co/kHcKMky/2-Org-Seq-Diagraminit.jpg)
@@ -351,6 +346,18 @@ peer channel list
 
 This will show that both organizations have joined the channel for CompanyA.
 
+--- delete ---
+
+* To release the resources and delete the network, use the delete command
+
+```bash
+
+go run main.go delete -u CompanyA
+
+go run main.go delete -u CompanyB
+
+```
+
 <!-- 
 
 ```bash
@@ -362,8 +369,7 @@ go run main.go leave -u CompanyB -o CompanyAOrg1 -n CompanyA_network1
 where -o and -n specify the network CompanyB operated Organization wants to leave, in our case it is CompanyAOrg1 and CompanyA_network1, 
 once this is run, now the CompanyBOrg1 is no longer part of the network CompanyA_network1 and would not receive any new updates. -->
 
-
-## Setting a three organization network on local ## 
+### Running a three organization network locally ### 
 
 * The setup of 3 Organization is similar to the 2 Organization setup as seen earlier.
 
@@ -395,6 +401,7 @@ go run main.go init companyC -s --local
 ```bash
 go run main.go add -u CompanyA -z path_to/CompanyCOrg1_Invite.zip
 ```
+
 --- sign ---
 
 * Next since CompanyB_Org1 is also part of the network, it also needs to endorse this and then upload it to the network.
@@ -426,21 +433,33 @@ go run main.go join -u CompanyC -z /path_to_/CompanyAOrg1_accept_transfer.zip
 
 This whole setup operation is reflected using the sequence diagram.
 
-
 In order to verify that all Organizations are part of the same network, we can go to the peer of each of them  and execute the command.  
 
 ```bash
 peer channel list
 ```
 
-
 This will list all the channels joined by them and each of the organization will also list the one created by the CompanyA thus verifying that all of them are part of the same network.
 
+--- delete ---
+
+* To release the resources and delete the network, use the delete command
+
+```bash
+
+go run main.go delete -u CompanyA
+
+go run main.go delete -u CompanyB
+
+go run main.go delete -u CompanyC
+
+```
 
 ## Additional Information on the Commands ##
-### First step being the initialization of the network.
 
-This includes different tasks while initializing the network done using the **init** command 
+### First step being the initialization of the network
+
+This includes different tasks while initializing the network done using the **init** command
 
 ```cli
 go run main.go init ${USERNAME}
@@ -450,7 +469,7 @@ The **init** command is the most essential command for forming the network, it *
 
 It needs to be initialized for both the organization as well as the network.
 
-#NOTE Init also provides a --simpleSetup flag which creates only the Organization and its components. 
+**NOTE** Init also provides a --simpleSetup flag which creates only the Organization and its components.
 
 Once the initialization of the network is done, then the user can now proceed to the creation phase of the network.
 
@@ -467,9 +486,11 @@ Once the network is created, the network is fully functional network with multip
 Now the organization can invite the other organization to also join this network using the join phase.
 
 create network
+
 ```cli
 go run main.go create -u ${USERID} -n ${NETWORK_NAME}
 ```
+
 ### Joining another Network ###
 
 Joining another network is divided into few smaller commandlines,
@@ -495,7 +516,6 @@ Joining another network is divided into few smaller commandlines,
 
   In this phase, the organization joins the network and adds its peers to the network.
 
-  
 ```bash
   go run main.go join -u ${USERID_Invitee Organization} -z ${Zip file provided by the other inviter organization}
   ```
@@ -509,11 +529,12 @@ This command needs to be explicitly called when there are multiple Organizations
 ```bash
 go run main.go sign -u ${Organization Part of Network} -z ${Zip file provided for endorsement or signing}.
 ```
+
 Once an organization signs this, this organization also needs to send it to other Organization part of the network, and that organization to the other. 
 
 The sign command also has other flag --update which is used when the majority of endorsements have been reached and the signed transaction can be directly uploaded to the network. After the --update, the network is ready for the endorsed transaction. 
 
-  ### Leave Phase
+### Leave Phase
 
   After the join is successful, an organization, which is part of a network can also decide to leave the network. 
 
@@ -526,4 +547,5 @@ The sign command also has other flag --update which is used when the majority of
   Using this command, the organization can leave the network.
 
 ## License
+
 [GNU](https://choosealicense.com/licenses/agpl-3.0/#)
