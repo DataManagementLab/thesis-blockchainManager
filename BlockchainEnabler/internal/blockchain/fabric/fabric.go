@@ -367,7 +367,8 @@ func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string) (e
 				cafile := fmt.Sprintf("organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName)
 
 				createZipForSign(enablerPath, fmt.Sprintf("%s_update_in_envelope.pb", orgName), fmt.Sprintf("signed_%s_update_in_envelope.json", orgName), filepath.Join(enablerPath, "network_config.json"), cafile, orgName, f.Enabler.NetworkName)
-				fmt.Printf("Need to use the sign command to send the zip file %s_sign_transfer.zip to %v", orgName, ownNetworkDetails.NetworkMembers)
+				printNetworkMembers(orgName, ownNetworkDetails.NetworkMembers)
+				// fmt.Printf("Need to use the sign command to send the zip file %s_sign_transfer.zip to %v", orgName, &ownNetworkDetails.NetworkMembers)
 			} else {
 				channelName := f.Enabler.Members[0].ChannelName
 				f.signAndUpdateConfig(fmt.Sprintf("%s_update_in_envelope.pb", orgName), channelName)
@@ -398,6 +399,13 @@ func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string) (e
 	return nil
 }
 
+func printNetworkMembers(orgName string, networkMembers []*string) {
+	fmt.Printf("Need to use the sign command to send the zip file %s_sign_transfer.zip to ", orgName)
+	for _, u := range networkMembers {
+		fmt.Printf(" %v ", *u)
+
+	}
+}
 func writeNetworkConfig(userId string, networkName string, content []byte) error {
 	if err := ioutil.WriteFile(filepath.Join(constants.EnablerDir, userId, networkName, "enabler", fmt.Sprintf("network_config.json")), content, 0755); err != nil {
 		return err
@@ -690,10 +698,10 @@ func (f *FabricDefinition) unzipFile(zipFile string, userId string, destinationF
 		}
 		if f.FileInfo().IsDir() {
 			fmt.Println("creating directory...")
-			os.MkdirAll(fileLocation, os.ModePerm)
+			os.MkdirAll(fileLocation, 0777)
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(fileLocation), os.ModePerm); err != nil {
+		if err := os.MkdirAll(filepath.Dir(fileLocation), 0777); err != nil {
 			panic(err)
 		}
 
@@ -1454,7 +1462,8 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool,
 
 	}
 	fmt.Printf("Check for network")
-	if err := docker.InspectNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true); err != nil {
+
+	if err := docker.InspectNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), false); err != nil {
 		if localSetup {
 			docker.CreateNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), true)
 

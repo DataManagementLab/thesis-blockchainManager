@@ -41,7 +41,7 @@ The user can also deploy their [smart contract](https://www.ibm.com/topics/smart
 
 The project requires some dependencies to be installed before using this platform.
 
-If the dependencies are already installed in your setup, then you can directly proceed to [Running the Project]()
+If the dependencies are already installed in your setup, then you can directly proceed to [Running the Project](#how-to-use-the-project)
 
 1. [Golang](#golang)
 2. [Docker](#docker)
@@ -338,13 +338,16 @@ go run main.go join -u CompanyB -z /path_to_/CompanyAOrg1_accept_transfer.zip
 
 This whole setup operation is reflected using the sequence diagram.
 
-In order to verify that both Organizations are part of the same network, we can go to the peer and execute the command.  
+In order to verify that both Organizations are part of the same network, we can go to the peer for each and execute the command.  
 
 ```bash
-peer channel list
+docker exec -it peer0.companyborg1.example.com peer channel list
+
+docker exec -it peer0.companyaorg1.example.com peer channel list
 ```
 
-This will show that both organizations have joined the channel for CompanyA.
+
+This will show that both organizations have joined the channel for CompanyA channelcompanyaorg1
 
 --- delete ---
 
@@ -364,7 +367,6 @@ go run main.go delete -u CompanyB
 
 go run main.go leave -u CompanyB -o CompanyAOrg1 -n CompanyA_network1 
 ```
-
 
 where -o and -n specify the network CompanyB operated Organization wants to leave, in our case it is CompanyAOrg1 and CompanyA_network1, 
 once this is run, now the CompanyBOrg1 is no longer part of the network CompanyA_network1 and would not receive any new updates. -->
@@ -435,11 +437,16 @@ This whole setup operation is reflected using the sequence diagram.
 
 In order to verify that all Organizations are part of the same network, we can go to the peer of each of them  and execute the command.  
 
-```bash
-peer channel list
-```
 
-This will list all the channels joined by them and each of the organization will also list the one created by the CompanyA thus verifying that all of them are part of the same network.
+```bash
+docker exec -it peer0.companyborg1.example.com peer channel list
+
+docker exec -it peer0.companyaorg1.example.com peer channel list
+
+docker exec -it peer0.companycorg1.example.com peer channel list
+``````
+
+This will list all the channels joined by them and each of the organization will also list the one created by the CompanyA, channelcompanyaorg1 thus verifying that all of them are part of the same network.
 
 --- delete ---
 
@@ -462,7 +469,7 @@ go run main.go delete -u CompanyC
 This includes different tasks while initializing the network done using the **init** command
 
 ```cli
-go run main.go init ${USERNAME}
+go run main.go init ${USERID}
 ```
 
 The **init** command is the most essential command for forming the network, it **initializes** the network.

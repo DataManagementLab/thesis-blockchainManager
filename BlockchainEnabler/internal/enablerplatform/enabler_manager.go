@@ -187,19 +187,19 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	em.logger.Printf("The value for the userid %s", em.UserId)
 	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, s.NetworkName)
 
-	if err := os.MkdirAll(filepath.Join(enablerDir, "configs"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(enablerDir, "configs"), 0777); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(enablerDir, "enabler"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(enablerDir, "enabler"), 0777); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(enablerDir, "enabler", "chaincode"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(enablerDir, "enabler", "chaincode"), 0777); err != nil {
 		return err
 	}
 
 	for _, member := range s.Members {
 
-		if err := os.MkdirAll(filepath.Join(enablerDir, "blockchain", member.ID), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Join(enablerDir, "blockchain", member.ID), 0777); err != nil {
 			return err
 		}
 	}

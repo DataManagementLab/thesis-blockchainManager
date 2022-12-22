@@ -11,7 +11,7 @@ go run main.go sign -u ashwin --update -z ~/.enabler/platform/kinshuk/kinshuk_ne
 
 go run main.go join -u muhammad -z ~/.enabler/platform/kinshuk/kinshuk_network1/enabler/kinshukOrg1_accept_transfer.zip
 
-go run main.go init simon -s
+go run main.go init simon -s --local
 
 go run main.go add -u kinshuk -z ~/.enabler/platform/simon/simon_network1/enabler/simonOrg1_Invite.zip
 

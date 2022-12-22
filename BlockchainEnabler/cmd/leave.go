@@ -47,6 +47,10 @@ var leaveCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(leaveCmd)
 	leaveCmd.Flags().StringVarP(&userID, "userId", "u", "", "The User ID for the user.")
+	
+	leaveCmd.Flags().StringVarP(&zipFile, "zipFile", "z", "", "The zip of the files needed.")
+	
+	
 	leaveCmd.Flags().StringVarP(&orgId, "orgName", "o", "", "The organization name whose network it wants to leave.")
 
 	leaveCmd.Flags().StringVarP(&networkName, "networkName", "n", "", "The Network the organization which wants to leave")
