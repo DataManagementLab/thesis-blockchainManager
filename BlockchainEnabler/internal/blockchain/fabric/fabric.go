@@ -1200,11 +1200,13 @@ func createZipForSign(enablerPath string, envelopeFile string, envelopeJson stri
 	defer archive.Close()
 
 	zipWriter := zip.NewWriter(archive)
-	err = os.Chmod(path.Join(enablerPath, envelopeFile), 0777)
-	if err != nil {
-		fmt.Println(err)
-	}
-
+	// err = os.Chmod(path.Join(enablerPath, envelopeFile), 0777)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	cmd := exec.Command("chmod", "777", path.Join(enablerPath, envelopeFile))
+ 	out, err := cmd.Output()
+	fmt.Printf("%s", out)
 	f1, err := os.Open(path.Join(enablerPath, envelopeFile))
 	if err != nil {
 		panic(err)
@@ -1246,10 +1248,13 @@ func createZipForSign(enablerPath string, envelopeFile string, envelopeJson stri
 	if _, err := io.Copy(w3, f3); err != nil {
 		panic(err)
 	}
-	err = os.Chmod(path.Join(enablerPath, cafile), 0777)
-	if err != nil {
-		fmt.Println(err)
-	}
+	// err = os.Chmod(path.Join(enablerPath, cafile), 0777)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	cmd = exec.Command("chmod", "777", path.Join(enablerPath, cafile))
+ 	out, err = cmd.Output()
+	fmt.Printf("%s", out)
 
 	f4, err := os.Open(path.Join(enablerPath, cafile))
 	if err != nil {
