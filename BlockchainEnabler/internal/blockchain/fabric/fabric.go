@@ -988,12 +988,6 @@ func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string
 		return err
 	}
 	fmt.Println("Result: " + out.String())
-	// out,err :=cmd.Output()
-	// if err != nil {
-	// 	fmt.Println("An error occured inside the envelope creation."+ cmd.String())
-	// 	return err
-	// }
-	// Required Step
 
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-v", fmt.Sprintf("%s/enabler/config1.json:/etc/enabler/config1.json", networkDir), "-v", fmt.Sprintf("%s/enabler/modified_config.json:/etc/enabler/modified_config.json", networkDir), "hyperledger/fabric-tools:2.3",
 		"configtxlator", "proto_encode", "--input", "/etc/enabler/config1.json", "--type", "common.Config", "--output", "/etc/enabler/config1.pb")
@@ -1009,9 +1003,10 @@ func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string
 	out1, err := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxlator proto_decode --input /etc/enabler/%s_update.pb --type common.ConfigUpdate | jq . > %s/enabler/%s_update.json", f.Enabler.NetworkName, storageType, orgName, networkDir, orgName)).Output()
 
 	// Required Step
-
+	exec.Command("bash", "-c",fmt.Sprintf("touch %s/enabler/%s_update_in_envelope.json",networkDir,orgName)).Output()
+	
 	cmd = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 echo '{\"payload\":{\"header\":{\"channel_header\":{\"channel_id\":\"%s\", \"type\":2}},\"data\":{\"config_update\":'$(cat /%s/enabler/%s_update.json)'}}}'| jq . > %s/enabler/%s_update_in_envelope.json", f.Enabler.NetworkName, storageType, channelName, networkDir, orgName, networkDir, orgName))
-
+	exec.Command("bash", "-c",fmt.Sprintf("touch %s/enabler/%s_update_in_envelope.pb",networkDir,orgName)).Output()
 	fmt.Printf("%s", cmd.String())
 	out1, err = cmd.Output()
 	if err != nil {
@@ -1022,12 +1017,6 @@ func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string
 	docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", storageType), "-v", fmt.Sprintf("%s/enabler/%s_update_in_envelope.json:/etc/enabler/%s_update_in_envelope.json", networkDir, orgName, orgName), "hyperledger/fabric-tools:2.3",
 		"configtxlator", "proto_encode", "--input", fmt.Sprintf("/etc/enabler/%s_update_in_envelope.json", orgName), "--type", "common.Envelope", "--output", fmt.Sprintf("/etc/enabler/%s_update_in_envelope.pb", orgName))
 
-	// copying  the output .pb file into the directory.
-	// docker.CopyFromContainer(fmt.Sprintf("%s", peerID), fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName), fmt.Sprintf("%s/tlsca.%s-cert.pem", path.Join(constants.EnablerDir, userId, networkId, "enabler"), f.Enabler.Members[0].DomainName), verbose)
-	// docker.CopyFromContainer(fmt.Sprintf("%s", peerID), fmt.Sprintf("/etc/enabler/%s_update_in_envelope.pb", orgName), fmt.Sprintf("%s/enabler/%s_update_in_envelope.pb", networkDir, orgName), verbose)
-	// copying  the output .pb file into the directory.
-	// docker.CopyFromContainer(fmt.Sprintf("%s_fabric_peer", f.Enabler.NetworkName), "/etc/enabler/organizations/ordererOrganizations/example.com/orderers/fabric_orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem", fmt.Sprintf("%s/tlsca.example.com-cert.pem", enablerPath), verbose)
-	// docker.CopyFromContainer(fmt.Sprintf("%s_fabric_peer", f.Enabler.NetworkName), fmt.Sprintf("/etc/enabler/%s_update_in_envelope.pb", orgName), fmt.Sprintf("%s/enabler/%s_update_in_envelope.pb", networkDir, orgName), verbose)
 	return nil
 }
 
@@ -1048,7 +1037,10 @@ func (f *FabricDefinition) signConfig(envelopeFile string) error {
 		docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", enablerPath), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
 			fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", f.Enabler.Members[0].OrgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3",
 			"peer", "channel", "signconfigtx", "-f", fmt.Sprintf("/etc/enabler/%s", envelopeFile), "--tls", "--cafile", fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName))
-		docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", enablerPath), "-v", fmt.Sprintf("%s/enabler/%s:/etc/enabler/%s", networkDir, envelopeFile, envelopeFile), "hyperledger/fabric-tools:2.3",
+			
+			exec.Command("bash", "-c",fmt.Sprintf("touch %s/enabler/signed_%s.json", networkDir,filenameWithoutExt)).Output()
+	
+			docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", enablerPath), "-v", fmt.Sprintf("%s/enabler/%s:/etc/enabler/%s", networkDir, envelopeFile, envelopeFile), "hyperledger/fabric-tools:2.3",
 			"configtxlator", "proto_decode", "--input", fmt.Sprintf("/etc/enabler/%s", envelopeFile), "--type", "common.Envelope", "--output", fmt.Sprintf("/etc/enabler/signed_%s.json", filenameWithoutExt))
 
 	}
@@ -1204,11 +1196,6 @@ func createZipForSign(enablerPath string, envelopeFile string, envelopeJson stri
 	// if err != nil {
 	// 	fmt.Println(err)
 	// }
-	cmd := exec.Command("chmod", "777", path.Join(enablerPath, envelopeFile))
- 	out, err := cmd.Output()
-	 if err != nil {
-		fmt.Println(err) 
-	}
 	f1, err := os.Open(path.Join(enablerPath, envelopeFile))
 	if err != nil {
 		panic(err)
@@ -1250,16 +1237,6 @@ func createZipForSign(enablerPath string, envelopeFile string, envelopeJson stri
 	if _, err := io.Copy(w3, f3); err != nil {
 		panic(err)
 	}
-	// err = os.Chmod(path.Join(enablerPath, cafile), 0777)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	cmd = exec.Command("chmod", "777", path.Join(enablerPath, cafile))
- 	out, err = cmd.Output()
-	 if err != nil {
-		fmt.Println(err) 
-	}
-
 	f4, err := os.Open(path.Join(enablerPath, cafile))
 	if err != nil {
 		panic(err)
