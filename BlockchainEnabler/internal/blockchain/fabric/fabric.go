@@ -341,7 +341,7 @@ func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string) (e
 	pathUser := filepath.Join(enablerPath, zipFileSplit[0])
 
 	// convert or transform this file specified in the path above
-	
+
 	// here it needs to copy the zip file unpack it load it into another folder and use the information provided in that folder -> read the network_config.json file.
 	f.unzipFile(zipfile, userid, zipFileSplit[0])
 	networkConfig := f.loadNetworkConfig(fmt.Sprintf("%s", filepath.Join(pathUser, "network_config.json")), userid)
@@ -1200,6 +1200,10 @@ func createZipForSign(enablerPath string, envelopeFile string, envelopeJson stri
 	defer archive.Close()
 
 	zipWriter := zip.NewWriter(archive)
+	err = os.Chmod(envelopeFile, 0777)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	f1, err := os.Open(path.Join(enablerPath, envelopeFile))
 	if err != nil {
@@ -1241,6 +1245,10 @@ func createZipForSign(enablerPath string, envelopeFile string, envelopeJson stri
 	}
 	if _, err := io.Copy(w3, f3); err != nil {
 		panic(err)
+	}
+	err = os.Chmod(cafile, 0777)
+	if err != nil {
+		fmt.Println(err)
 	}
 
 	f4, err := os.Open(path.Join(enablerPath, cafile))
