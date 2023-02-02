@@ -1206,7 +1206,9 @@ func createZipForSign(enablerPath string, envelopeFile string, envelopeJson stri
 	// }
 	cmd := exec.Command("chmod", "777", path.Join(enablerPath, envelopeFile))
  	out, err := cmd.Output()
-	fmt.Printf("%s", out)
+	 if err != nil {
+		fmt.Println(err) 
+	}
 	f1, err := os.Open(path.Join(enablerPath, envelopeFile))
 	if err != nil {
 		panic(err)
@@ -1254,7 +1256,9 @@ func createZipForSign(enablerPath string, envelopeFile string, envelopeJson stri
 	// }
 	cmd = exec.Command("chmod", "777", path.Join(enablerPath, cafile))
  	out, err = cmd.Output()
-	fmt.Printf("%s", out)
+	 if err != nil {
+		fmt.Println(err) 
+	}
 
 	f4, err := os.Open(path.Join(enablerPath, cafile))
 	if err != nil {
