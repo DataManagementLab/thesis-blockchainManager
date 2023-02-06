@@ -80,7 +80,7 @@ export PATH=$PATH:$GOROOT/bin
 * After updating the environment variable, run  
 
 ```bash
-~/.bash_rc
+source ~/.bashrc
 ```
 
 * To check if golang is successfully installed in the system, use the below command.
