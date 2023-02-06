@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/rs/zerolog"
 )
@@ -187,6 +188,7 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	em.logger.Printf("The value for the userid %s", em.UserId)
 	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, s.NetworkName)
 
+	syscall.Umask(0)
 	if err := os.MkdirAll(filepath.Join(enablerDir, "configs"), 0777); err != nil {
 		return err
 	}
