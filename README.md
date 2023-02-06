@@ -69,9 +69,8 @@ mkdir -p $HOME/go/{bin,src,pkg}
 * Also add the environment variables to your bash_rc
 
 ```bash
- <!-- Go environment -->
+ 
 export GOROOT=/usr/local/go
-<!-- Change the GOPATH value if your workspace is not $HOME/go -->
 export GOPATH=$HOME/go
 export GOBIN=$GOPATH/bin
 export PATH=$PATH:$GOROOT/bin
