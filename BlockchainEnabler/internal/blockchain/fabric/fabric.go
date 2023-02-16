@@ -393,6 +393,8 @@ func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string) (e
 					fmt.Println(err)
 					return err
 				}
+
+				fmt.Printf("\n\nThe organization %s has been updated to the network, Use the join command to join the network.\n\n", orgName)
 				// write network config.
 			}
 		}
@@ -407,11 +409,12 @@ func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string) (e
 }
 
 func printNetworkMembers(orgName string, networkMembers []*string) {
-	fmt.Printf("Need to use the sign command to send the zip file %s_sign_transfer.zip to ", orgName)
+	fmt.Printf("\n\nNeed to use the sign command to send the zip file %s_sign_transfer.zip to ", orgName)
 	for _, u := range networkMembers {
 		fmt.Printf(" %v ", *u)
 
 	}
+	fmt.Println()
 }
 func writeNetworkConfig(userId string, networkName string, content []byte) error {
 	if err := ioutil.WriteFile(filepath.Join(constants.EnablerDir, userId, networkName, "enabler", fmt.Sprintf("network_config.json")), content, 0755); err != nil {
@@ -466,13 +469,14 @@ func (f *FabricDefinition) Sign(userid string, useVolume bool, zipfile string, u
 	if !update {
 		f.signConfig(fmt.Sprintf(envelopeName[0]))
 		createZipForSign(enablerPath, fmt.Sprintf(envelopeName[0]), fmt.Sprintf("signed_%s.json", envelopeNameWithoutExt), filepath.Join(signPath, "network_config.json"), cafile, zipFileSplit[0], networkName)
-
+		fmt.Println("\nNeed to send the file to the remaining participants of the network.")
 	} else {
 
 		fmt.Println("Sign and update called ")
 		if err := f.signAndUpdateConfigMultipleParticipants(fmt.Sprintf(envelopeName[0]), channelName, networkName, ordererName, cafile); err != nil {
 			return err
 		}
+		fmt.Println("\nSign has been successfully executed and the network is updated, Run the join command to join the network")
 
 	}
 
@@ -602,15 +606,21 @@ func (f *FabricDefinition) Join(userid string, useVolume bool, zipFile string, b
 	if ok {
 		networkId := networkConfig.NetworkName
 		orgName := networkDetails.OrganizationInfo.OrganizationName
-		loadComposeFile(path.Join(workingDir, "docker-compose.yml"), networkId, pathUser)
+		if err := loadComposeFile(path.Join(workingDir, "docker-compose.yml"), networkId, pathUser); err != nil {
+			return err
+		}
 		if err := f.Deployer.Deploy(workingDir); err != nil {
 			return err
 		}
 		time.Sleep(2 * time.Second)
-		f.joinOtherOrgPeerToChannel(userid, networkId, orgName)
-		f.createAnchorPeer(userid, networkId, orgName)
+		if err := f.joinOtherOrgPeerToChannel(userid, networkId, orgName); err != nil {
+			return err
+		}
+		if err := f.createAnchorPeer(userid, networkId, orgName); err != nil {
+			return err
+		}
 
-		fmt.Printf(" The network id and org names are %s   %s", networkId, orgName)
+		fmt.Printf("\n\n The Organization was able to join the network %s successfully \n \n", networkId)
 	} else {
 		fmt.Printf("An error occured %s", blockchaindefinition)
 
@@ -1003,10 +1013,10 @@ func (f *FabricDefinition) envelopeBlockCreation(userId string, networkId string
 	out1, err := exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 configtxlator proto_decode --input /etc/enabler/%s_update.pb --type common.ConfigUpdate | jq . > %s/enabler/%s_update.json", f.Enabler.NetworkName, storageType, orgName, networkDir, orgName)).Output()
 
 	// Required Step
-	exec.Command("bash", "-c",fmt.Sprintf("touch %s/enabler/%s_update_in_envelope.json",networkDir,orgName)).Output()
-	
+	exec.Command("bash", "-c", fmt.Sprintf("touch %s/enabler/%s_update_in_envelope.json", networkDir, orgName)).Output()
+
 	cmd = exec.Command("bash", "-c", fmt.Sprintf("docker run --rm --network=%s_default -v %s:/etc/enabler hyperledger/fabric-tools:2.3 echo '{\"payload\":{\"header\":{\"channel_header\":{\"channel_id\":\"%s\", \"type\":2}},\"data\":{\"config_update\":'$(cat /%s/enabler/%s_update.json)'}}}'| jq . > %s/enabler/%s_update_in_envelope.json", f.Enabler.NetworkName, storageType, channelName, networkDir, orgName, networkDir, orgName))
-	exec.Command("bash", "-c",fmt.Sprintf("touch %s/enabler/%s_update_in_envelope.pb",networkDir,orgName)).Output()
+	exec.Command("bash", "-c", fmt.Sprintf("touch %s/enabler/%s_update_in_envelope.pb", networkDir, orgName)).Output()
 	fmt.Printf("%s", cmd.String())
 	out1, err = cmd.Output()
 	if err != nil {
@@ -1037,10 +1047,10 @@ func (f *FabricDefinition) signConfig(envelopeFile string) error {
 		docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", enablerPath), "-e", fmt.Sprintf("CORE_PEER_ADDRESS=%s:7051", peerID), "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
 			fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", f.Enabler.Members[0].OrgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3",
 			"peer", "channel", "signconfigtx", "-f", fmt.Sprintf("/etc/enabler/%s", envelopeFile), "--tls", "--cafile", fmt.Sprintf("/etc/enabler/organizations/ordererOrganizations/%s/orderers/%s.%s/msp/tlscacerts/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName, f.Enabler.Members[0].OrdererName, f.Enabler.Members[0].DomainName, f.Enabler.Members[0].DomainName))
-			
-			exec.Command("bash", "-c",fmt.Sprintf("touch %s/enabler/signed_%s.json", networkDir,filenameWithoutExt)).Output()
-	
-			docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", enablerPath), "-v", fmt.Sprintf("%s/enabler/%s:/etc/enabler/%s", networkDir, envelopeFile, envelopeFile), "hyperledger/fabric-tools:2.3",
+
+		exec.Command("bash", "-c", fmt.Sprintf("touch %s/enabler/signed_%s.json", networkDir, filenameWithoutExt)).Output()
+
+		docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", enablerPath), "-v", fmt.Sprintf("%s/enabler/%s:/etc/enabler/%s", networkDir, envelopeFile, envelopeFile), "hyperledger/fabric-tools:2.3",
 			"configtxlator", "proto_decode", "--input", fmt.Sprintf("/etc/enabler/%s", envelopeFile), "--type", "common.Envelope", "--output", fmt.Sprintf("/etc/enabler/signed_%s.json", filenameWithoutExt))
 
 	}

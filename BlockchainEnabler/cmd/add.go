@@ -36,13 +36,25 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Add called")
 
 		invitePlatformManager = enablerplatform.GetInstance(&logger)
-		invitePlatformManager.LoadUser("", userId)
-		// logger.Printf(invitePlatformManager.UserId)
-		invitePlatformManager.AddOrganization(useVolume, file)
+		// Loads the network configuration for the user.
+		if err := invitePlatformManager.LoadUser("", userId); err != nil {
+			return err
+		}
+		// Adds the passed organization to the network.
+		// If multiple organizations, part of the network then it only endorses the transaction.
+		
+		// fmt.Printf("\n\n Adding the  '%s' for user '%s' has been Successfully created.\n", createPlatformManager.Enablers[0].NetworkName, userId)
+
+		if err := invitePlatformManager.AddOrganization(useVolume, file); err != nil {
+			return err
+		}
+		
+		
+		return nil
 	},
 }
 
@@ -50,14 +62,4 @@ func init() {
 	rootCmd.AddCommand(addCmd)
 	addCmd.Flags().StringVarP(&userId, "userId", "u", "", "The User ID for the user.")
 	addCmd.Flags().StringVarP(&file, "zipfile", "z", "", "zip file containing the relevant information.")
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// addCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// addCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

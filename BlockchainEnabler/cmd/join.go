@@ -38,7 +38,7 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("join called")
 		// since we now have the name of the org we want to create, first step would be to generate the org file, and then create the definition file for the org.
 		// Files currently needed
@@ -50,39 +50,21 @@ to quickly create a Cobra application.`,
 		// After they are loaded, then we initialize the instance as a fabric / ethereum instance which could be then implemented.
 
 		joinPlatformManager = enablerplatform.GetInstance(&logger)
-		joinPlatformManager.LoadUser("", userId)
+		if err := joinPlatformManager.LoadUser("", userId); err != nil {
+			return err
+		}
 		// logger.Printf(invitePlatformManager.UserId)
-		joinPlatformManager.JoinNetwork(useVolume, zipFile, basic)
+		if err := joinPlatformManager.JoinNetwork(useVolume, zipFile, basic); err != nil {
+			return err
+		}
+		return nil
 
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(joinCmd)
-	// create two flag here 1 flag is for providing the name of the org which has to be joined and the next the name of the org1
-
 	joinCmd.Flags().StringVarP(&userId, "userId", "u", "", "The User ID for the user.")
 	joinCmd.Flags().StringVarP(&zipFile, "zipFile", "z", "", "The zip of the files needed.")
 	joinCmd.Flags().BoolVarP(&basic, "simpleSetup", "s", false, "Function to enable or disable the use of Basic setup default: false")
-
-	// joinCmd.Flags().StringVar(&configFile,"config","","Provide the config file needed to add Organization in network.")
-
-	// joinCmd.Flags().BoolVarP(&finalize, "finalize", "f", false, "This phase runs on the behalf of the joining network.")
-
-	// joinPlatformManager = enablerplatform.GetInstance(&logger)
-
-	// It needs to check if the organization is already present or not if it is not present then create a default orgnatization with the name specified by the user.
-	// once the join -c org3 -p org1 is done then
-	// first it will check the org3 is present -> check throuh the user and the network and then bring up the network .
-	// Currently would create the org3 files which are necessary and then generate the org3.json file in the folder
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// joinCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// joinCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
