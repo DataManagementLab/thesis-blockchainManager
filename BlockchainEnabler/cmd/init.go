@@ -1,5 +1,5 @@
 /*
-Copyright © 2021 NAME HERE <EMAIL ADDRESS>
+Copyright © 2021 Kinshuk Kislay  <kinshuk.kislay@stud.tu-darmstadt.de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +44,9 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "This command is for initializing the network",
 	Long: `The user has to provide the initialization parameters for the network to be initialized
-	In Initialization Phase these things are taken care o9	1. Creating the yaml and the json files for running the setup.
+	In Initialization Phase these things are taken care of
+	
+	1. Creating the yaml and the json files for running the setup.
 	2. Verification and addition of the identities.
 	3. Creation of the channel and the basic Block for the Blockchain. 
 	4. The configuration file will be provided at the end of the setup.`,

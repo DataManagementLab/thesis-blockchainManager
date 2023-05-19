@@ -70,6 +70,9 @@ var chaincodeImplementation string
 var userIdentification string
 var verbose bool
 
+// Init is the implemenation of the init function in the IProvider interface for hyperledger fabric.
+// It performs few steps as listed below:
+// 1. Generating the necessary file for deployment, configuration and cryptographic material.
 func (f *FabricDefinition) Init(userId string, useVolume bool, basicSetup bool, localSetup bool, logging bool) (err error) {
 
 	//Steps to follow:
@@ -98,7 +101,11 @@ func (f *FabricDefinition) Init(userId string, useVolume bool, basicSetup bool, 
 	if err := f.generateCryptoMaterial(userId, useVolume, localSetup); err != nil {
 		return err
 	}
-	fmt.Printf("\n\nThe user '%s' has been Successfully initialized. To create the network, run:\n\n go run main.go create -u %s\n\n", userId, userId)
+	if !basicSetup {
+		fmt.Printf("\n\nThe user '%s' has been Successfully initialized. To create the network, run:\n\n go run main.go create -u %s\n\n", userId, userId)
+	} else {
+		fmt.Printf("\n\nThe user '%s' has been Successfully initialized. This can directly be used in join to join an already existing network. Checkout join command for more information.\n ", userId)
+	}
 	// Need to call the deployer-> which can be anything from kubernetes to docker -> depending on the user choice.
 	// by default it is docker
 	// getDeployerInstance("docker")
@@ -262,6 +269,14 @@ func getDeployerInstance(deployerType string) (deployer deployer.IDeployer) {
 	return GetFabricDockerInstance()
 }
 
+// Create is the implemenation of the create function in the IProvider interface for hyperledger fabric.
+// It performs few steps as listed below:
+// 1. Creating the genesis block
+// 2. Deploying the containers for the network
+// 3. Packaging and installing the chaincode implementation on the peers
+// 4. Creating the channel.
+// 5. Making the peers for the organization join the channel.
+// 6. Fetching the block information and fetching the genesis block details.
 func (f *FabricDefinition) Create(userId string, useSDK bool, useVolume bool, logging bool) (err error) {
 	// Step to do inside the create function
 
@@ -296,18 +311,6 @@ func (f *FabricDefinition) Create(userId string, useSDK bool, useVolume bool, lo
 	f.getBlockInformation(userId, useVolume)
 	f.fetchChannelGenesisBlock()
 
-	// Fetching the ccp file.
-
-	//Use this section to define network using the SDK.
-	// First step is to access the ccp file for configuration.
-	// Check for the error.
-	// Since the folders are present in the orgs structure -> which are located inside the container special precaution must be take when using that.
-
-	// Next step is to actually run the container and pass the parameter in the containers.
-	// For this particular use case we will get hte docker instance of the machine and then run the container in the fabric_docker file.
-	// This container start up can be different according to the container so for example the startup function in the deployerinterface should be created.
-
-	// Currently i am planning to use the functions the docker code from the firefly cli seems quite nice way of handling things.
 	return nil
 }
 
@@ -325,6 +328,14 @@ func packageChaincodeImplementation(enablerPath string) {
 		log.Println(err)
 	}
 }
+
+// Add is the implemenation of the add function in the IProvider interface for hyperledger fabric.
+// It performs few steps as listed below:
+// 1. Fetching the config block for the network.
+// 2. Loading passed invite file and unzipping and storing it within own folder structure.
+// 3. Transforming the definition file.
+// 4. Creating the envelope file and signing it.
+// 5. Updating this signed envelope file to the networks or providing user message to send it to other organization part of the network.
 func (f *FabricDefinition) Add(userid string, useVolume bool, zipfile string, logging bool) (err error) {
 	userIdentification = userid
 	verbose = logging
@@ -425,6 +436,11 @@ func writeNetworkConfig(userId string, networkName string, content []byte) error
 	return nil
 }
 
+// Sign is the implemenation of the sign function in the IProvider interface for hyperledger fabric.
+// It performs few steps as listed below:
+// 1. Loads the zip file passed in the argument.
+// 2. Signs the envelope file containing other signatures.
+// 3. Update it to the network or ask user to send it to other organizations part of the network.
 func (f *FabricDefinition) Sign(userid string, useVolume bool, zipfile string, update bool, logging bool) (err error) {
 
 	userIdentification = userid
@@ -436,7 +452,6 @@ func (f *FabricDefinition) Sign(userid string, useVolume bool, zipfile string, u
 	var networkName string
 	var ordererName string
 	var cafile string
-	// var orgName string
 	// takes in the zip file, checks participant list and signature, then signs it and uploads it / gives message with generated zip file to send to another org,
 	// read the zip file and take the .pb and .json files also identify the networkconfig file.
 
@@ -485,8 +500,6 @@ func (f *FabricDefinition) Sign(userid string, useVolume bool, zipfile string, u
 
 	}
 
-	// now try to load the signature
-
 	return nil
 }
 
@@ -517,6 +530,10 @@ func loadSignedEnvelope(envelopePath string) {
 	fmt.Printf("%v", signatures)
 }
 
+// Delete is the implemenation of the delete function in the IProvider interface for hyperledger fabric.
+// It performs few steps as listed below:
+// 1. Stops and removes all the containers used by the network and the organization.
+// 2. Clears the folder structure created during the process.
 func (f *FabricDefinition) Delete(userId string, logging bool) (err error) {
 
 	//Steps to follow:
@@ -590,6 +607,12 @@ func transformFile(sourcePath string, dstPath string) {
 	}
 }
 
+// Join is the implemenation of the join function in the IProvider interface for hyperledger fabric.
+// It performs few steps as listed below:
+// 1. Loads the accept transfer file passed in the argument.
+// 2. Fetches the network configurations.
+// 3. Updates its own network to accomodate the new network which it wants to join.
+// 4. joins the network along with all its peers.
 func (f *FabricDefinition) Join(userid string, useVolume bool, zipFile string, basicSetup bool, logging bool) (err error) {
 	f.UseVolume = useVolume
 	verbose = logging
@@ -750,6 +773,11 @@ func (f *FabricDefinition) unzipFile(zipFile string, userId string, destinationF
 	//  unzip the file first in a folder and then copy it to the required directory, also check if nothing is missing or not.
 }
 
+// Leave is the implemenation of the leave function in the IProvider interface for hyperledger fabric.
+// It performs few steps as listed below:
+// 1. The leave command is designed to enable an organization leave the network.
+// 2. The organization running, updates the network that it wants to leave.
+// 3. This organization then creates a envelope file which needs to be sent to other organization for their signatures.
 func (f *FabricDefinition) Leave(networkId string, orgName string, userId string, useVolume bool, finalize bool) error {
 	userIdentification = userId
 	verbose = true
@@ -839,6 +867,10 @@ func (f *FabricDefinition) fetchConfigBlock(userId string) (err error) {
 	return nil
 }
 
+// In hyperledger fabric, Anchor peers are the peers with special priveledges:
+// 1. These peers have the right to endorse onto transactions
+// 2. These peers are discoverable by other peers part of network
+// 3. These peers can be thought of as admin peers of the organization.
 func (f *FabricDefinition) createAnchorPeer(userID string, networkId string, orgName string) (err error) {
 	f.Logger.Printf("Creating anchor peers block for channel")
 	var storageType string
@@ -962,25 +994,7 @@ func (f *FabricDefinition) leaveNetwork(userID string, orgId string, networkId s
 		fmt.Sprintf("CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/%s/peers/%s/tls/ca.crt", orgDomain, peerID), "-e", fmt.Sprintf("CORE_PEER_LOCALMSPID=%sMSP", f.Enabler.Members[0].OrgName), "-e", fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/%s/users/Admin@%s/msp", orgDomain, orgDomain), "hyperledger/fabric-tools:2.3",
 		"peer", "channel", "signconfigtx", "-f", fmt.Sprintf("/etc/enabler/%s", "config_update_in_envelope_leave.pb"), "--tls", "--cafile", fmt.Sprintf("/etc/enabler/tlsca.%s-cert.pem", f.Enabler.Members[0].DomainName))
 
-	// if f.UseVolume {
-	// 	docker.CopyFromContainer(fmt.Sprintf("%s", peerID), "/etc/enabler/config_update_in_envelope.pb", fmt.Sprintf("%s/enabler/config_update_in_envelope.pb", networkDir), verbose)
-
-	// 	docker.CopyFileToVolume(volumeName, fmt.Sprintf("%s/enabler/config_update_in_envelope.pb", networkDir), fmt.Sprintf("config_update_in_envelope.pb"), verbose)
-	// }
-	// } else {
-	// 	// docker.CopyFromContainer(fmt.Sprintf("%s", peerID), "/etc/enabler/config_update_in_envelope.pb", fmt.Sprintf("%s/enabler/config_update_in_envelope.pb", networkDir), verbose)
-
-	// }
-
 	return nil
-	// Now sign this transaction and update it.
-	// Before doing this need to copy the cafile from the orderer msp-> tlsca .pem to org3 accessible location
-	// Then only it would work.
-	// docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-v", fmt.Sprintf("%s/enabler/tlsca.example.com-cert.pem:/etc/enabler/tlsca.example.com-cert.pem", networkDir), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e",
-	// 	"CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3",
-	// 	"peer", "channel", "update", "-f", "/etc/enabler/anchor_update_in_envelope.pb", "-c", "enablerchannel", "-o", "fabric_orderer:7050", "--tls", "--cafile", fmt.Sprintf("%s/tlsca.example.com-cert.pem", "/etc/enabler"))
-
-	// return docker.RunDockerCommand(networkDir, verbose, verbose, "run", "--rm", fmt.Sprintf("--network=%s_default", f.Enabler.NetworkName), "-v", fmt.Sprintf("%s:/etc/enabler", volumeName), "-e", "CORE_PEER_ADDRESS=fabric_peer:7051", "-e", "CORE_PEER_TLS_ENABLED=true", "-e", "CORE_PEER_TLS_ROOTCERT_FILE=/etc/enabler/organizations/peerOrganizations/org3.example.com/peers/fabric_peer.org3.example.com/tls/ca.crt", "-e", "CORE_PEER_LOCALMSPID=Org3MSP", "-e", "CORE_PEER_MSPCONFIGPATH=/etc/enabler/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp", "hyperledger/fabric-tools:2.3", "peer", "channel", "getinfo", "-c", "enablerchannel")
 
 }
 
@@ -1469,7 +1483,6 @@ func (f *FabricDefinition) generateCryptoMaterial(userId string, useVolume bool,
 		return err
 	}
 	f.Logger.Printf("Cryptographic Certificates generated successfully.")
-
 	if err := docker.InspectNetwork(fmt.Sprintf("%s_default", f.Enabler.NetworkName), verbose); err != nil {
 		f.Logger.Printf("Creating a docker network . . .")
 		if localSetup {

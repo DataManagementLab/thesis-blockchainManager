@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 Kinshuk Kislay  <kinshuk.kislay@stud.tu-darmstadt.de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,13 +28,11 @@ var update bool
 // signCmd represents the sign command
 var signCmd = &cobra.Command{
 	Use:   "sign",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Sign command is used to sign the transaction by the members of the network to reach consensus.",
+	Long: `Sign command is run by organization or its peers to endorse a transaction or a change.
+	There are two options with the sign command,
+	1. Without update : The peer just endorses the transaction, but does not update the network.
+	2. With update: The peer endorses the transaction and updates the network, usually done by the last organization to sign a transaction to reach majority of endorsements.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("sign called")
 

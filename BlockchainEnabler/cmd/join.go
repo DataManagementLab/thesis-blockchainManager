@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 Kinshuk Kislay  <kinshuk.kislay@stud.tu-darmstadt.de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,14 +32,13 @@ var basic bool
 var joinCmd = &cobra.Command{
 	Use:   "join",
 	Short: "Join command adds another  organization to the created network.",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Long: `Join command is run by the organization which wants to join the network hosted and created by another organization.
+	The join command performs the following steps:
+	1. Uses the zip file containing the network configuration to to join the network.
+	2. Updates the network to be joined by this new organization.
+	3. Adds the peers belonging to the organization running join, to become part of the network.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("join called")
+		fmt.Println("Running join command")
 		// since we now have the name of the org we want to create, first step would be to generate the org file, and then create the definition file for the org.
 		// Files currently needed
 		// 1. crypto file to generate the cryptographic files for the org

@@ -1,4 +1,4 @@
-// Copyright © 2021 Kaleido, Inc.
+// Copyright © 2021 KINSHUK KISLAY kinshuk.kislay@stud.tu-darmstadt.de
 //
 // SPDX-License-Identifier: Apache-2.0
 //

@@ -38,7 +38,7 @@ var createCmd = &cobra.Command{
 	4. Running the containers for the whole -> orderer, ca, peer and other if needed.`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("create called")
+		fmt.Println("Running create command")
 		if err := docker.CheckDockerConfig(); err != nil {
 			return err
 		}
