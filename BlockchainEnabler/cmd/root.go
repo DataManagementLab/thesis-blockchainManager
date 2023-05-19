@@ -1,5 +1,5 @@
 /*
-Copyright © 2021 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 Kinshuk Kislay  <kinshuk.kislay@stud.tu-darmstadt.de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import (
 var cfgFile string
 var logger zerolog.Logger = log.Logger
 var useVolume bool
+var userLogging bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -61,6 +62,8 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.BlockchainEnabler.yaml)")
 	rootCmd.PersistentFlags().BoolVarP(&useVolume, "useVolume", "v", false, "Function to enable or disable the use of Volume default: false")
+	rootCmd.PersistentFlags().BoolVarP(&userLogging, "logging", "l", false, "Function to enable or disable the use of debug Logging")
+	
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

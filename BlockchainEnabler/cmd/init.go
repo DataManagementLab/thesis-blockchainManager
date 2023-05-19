@@ -1,5 +1,5 @@
 /*
-Copyright © 2021 NAME HERE <EMAIL ADDRESS>
+Copyright © 2021 Kinshuk Kislay  <kinshuk.kislay@stud.tu-darmstadt.de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +44,9 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "This command is for initializing the network",
 	Long: `The user has to provide the initialization parameters for the network to be initialized
-	In Initialization Phase these things are taken care o9	1. Creating the yaml and the json files for running the setup.
+	In Initialization Phase these things are taken care of
+	
+	1. Creating the yaml and the json files for running the setup.
 	2. Verification and addition of the identities.
 	3. Creation of the channel and the basic Block for the Blockchain. 
 	4. The configuration file will be provided at the end of the setup.`,
@@ -100,6 +102,7 @@ var initCmd = &cobra.Command{
 			}
 		}
 		initOptions.BlockchainType, _ = types.BlockchainProviderSelection(selectedBlockchain)
+		initOptions.UserLogging = userLogging
 		platformManager = enablerplatform.GetInstance(&logger)
 		//  Initialization of the User Network.
 		// Initilization of all the components needed to run, which involves the creation of the docker yaml file and other stuff.
@@ -107,7 +110,7 @@ var initCmd = &cobra.Command{
 		if err := platformManager.InitEnablerPlatform(userId, memberCount, &initOptions, localSetup); err != nil {
 			return nil
 		}
-		fmt.Printf("\n\nThe user '%s' has been Successfully initialized. To create the network, run:\n\n go run main.go create -u %s\n\n", userId, userId)
+		// fmt.Printf("\n\nThe user '%s' has been Successfully initialized. To create the network, run:\n\n go run main.go create -u %s\n\n", userId, userId)
 		return nil
 	},
 }

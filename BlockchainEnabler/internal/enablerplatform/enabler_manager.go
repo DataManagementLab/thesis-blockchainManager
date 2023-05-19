@@ -44,21 +44,15 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	e.BlockchainProvider = initOptions.BlockchainType.String()
 	e.ExposedBlockchainPort = initOptions.ServicesPort
 	e.Members = make([]*types.Member, numberOfMembers)
-	// e.NetworkName = fmt.Sprintf("%s_enabler_network_%s_%d", userId, e.BlockchainProvider, em.GetCurrentCount(e.BlockchainProvider))
 	e.NetworkName = initOptions.NetworkName
 	em.logger.Printf("Initializing the members for the Network")
 	// Create members for each of the network ->
 	// This members will be the different components that are needed and connected with the core.
 
 	for i := 0; i < numberOfMembers; i++ {
-		// externalProcess := i < options.ExternalProcesses
 		e.Members[i] = em.createMember(fmt.Sprint(i), i, initOptions)
 	}
 	em.Enablers = append([]*types.Network{}, e)
-
-	// Fetching the blockchain Provider
-	//  setting the blockchain Provider..
-	// Need to call a function which takes the e.BlockchainProvider and returns an Interface for the IProvider.-> which would be the fabric struct instance.
 
 	// now we need to provide the values that are needed to create our docker compose
 	//
@@ -66,19 +60,21 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	// There are currently two deployers to choose from 1. docker 2. K8
 	// if the user chooses the docker deployment -> then the function needs to call the provider and then run the functions specific to the docker.
 	// Otherwise it should call the functions specific to the k8s.
-	//
+
 	// Creating the  structure.
 	if err := em.ensureDirectories(e); err != nil {
 		return err
 	}
-
+	// Fetching the blockchain Provider
+	//  setting the blockchain Provider..
+	// Need to call a function which takes the e.BlockchainProvider and returns an Interface for the IProvider.-> which would be the fabric struct instance.
 	e.InterfaceProvider = em.getBlockchainProvider(e)
 	if err := em.writeNetworkConfig(e); err != nil {
 		return err
 	}
 
 	//  create a function which checks the ports and pass this function to the init.
-	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume, initOptions.BasicSetup, localSetup); err != nil {
+	if err := e.InterfaceProvider.Init(em.UserId, initOptions.UseVolume, initOptions.BasicSetup, localSetup, initOptions.UserLogging); err != nil {
 		return err
 	}
 	if err := em.writePlatformInfo(e); err != nil {
@@ -88,10 +84,10 @@ func (em *EnablerPlatformManager) InitEnablerPlatform(userId string, numberOfMem
 	return nil
 }
 
-func (em *EnablerPlatformManager) CreateNetwork(useVolume bool) error {
+func (em *EnablerPlatformManager) CreateNetwork(useVolume bool, userLogging bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			if err := network.InterfaceProvider.Create(em.UserId, false, useVolume); err != nil {
+			if err := network.InterfaceProvider.Create(em.UserId, false, useVolume, userLogging); err != nil {
 				return err
 			}
 		}
@@ -102,10 +98,10 @@ func (em *EnablerPlatformManager) CreateNetwork(useVolume bool) error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool) error {
+func (em *EnablerPlatformManager) CreateNetworkUsingSDK(useVolume bool, userLogging bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-			if err := network.InterfaceProvider.Create(em.UserId, true, false); err != nil {
+			if err := network.InterfaceProvider.Create(em.UserId, true, false, userLogging); err != nil {
 				return err
 			}
 		}
@@ -119,7 +115,6 @@ func (em *EnablerPlatformManager) writeNetworkConfig(enabler *types.Network) (er
 		ChannelName:      enabler.Members[0].ChannelName,
 		OrdererName:      enabler.Members[0].OrdererName,
 	}
-	// organizationList := append([]*types.OrganizationDefinition{}, &orgDefinition)
 	networkMembers := append([]*string{}, &enabler.Members[0].OrgName)
 
 	fabricDefinition := types.FabricDefinition{
@@ -186,12 +181,10 @@ func (em *EnablerPlatformManager) LoadUser(netId string, userId string) error {
 	// check for which provider it belongs to.
 	em.logger.Printf("Network loaded successfully.")
 	em.UserId = userId
-	// em.logger.Printf("%s",network.NetworkName)
 	return nil
 }
 
 func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
-	em.logger.Printf("The value for the userid %s", em.UserId)
 	enablerDir := filepath.Join(constants.EnablerDir, em.UserId, s.NetworkName)
 
 	syscall.Umask(0)
@@ -214,72 +207,48 @@ func (em *EnablerPlatformManager) ensureDirectories(s *types.Network) error {
 	return nil
 }
 
-func (em *EnablerPlatformManager) AddOrganization(useVolume bool, file string) error {
+func (em *EnablerPlatformManager) AddOrganization(useVolume bool, file string,logging bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-
-			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Add(em.UserId, useVolume, file)
-
+			return network.InterfaceProvider.Add(em.UserId, useVolume, file,logging)
 		}
 	}
-
-	// currently will just create a demo netowk and try to join using that network.
 	return nil
 }
 
-func (em *EnablerPlatformManager) SignOrganization(useVolume bool, file string, update bool) error {
+func (em *EnablerPlatformManager) SignOrganization(useVolume bool, file string, update bool, logging bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-
-			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Sign(em.UserId, useVolume, file, update)
-
+			return network.InterfaceProvider.Sign(em.UserId, useVolume, file, update,logging)
 		}
 	}
-
-	// currently will just create a demo netowk and try to join using that network.
 	return nil
 }
 
-func (em *EnablerPlatformManager) DeleteNetwork() error {
+func (em *EnablerPlatformManager) DeleteNetwork(logging bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-
-			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Delete(em.UserId)
-
+			return network.InterfaceProvider.Delete(em.UserId,logging)
 		}
 	}
-
-	// currently will just create a demo netowk and try to join using that network.
 	return nil
 }
 
-func (em *EnablerPlatformManager) JoinNetwork(useVolume bool, zipFile string, basicSetup bool) error {
+func (em *EnablerPlatformManager) JoinNetwork(useVolume bool, zipFile string, basicSetup bool,logging bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-
-			// fmt.Println("Vlau of use volume", em.Options.UseVolume)
-			return network.InterfaceProvider.Join(em.UserId, useVolume, zipFile, basicSetup)
-
+			return network.InterfaceProvider.Join(em.UserId, useVolume, zipFile, basicSetup,logging)
 		}
 	}
-
-	// currently will just create a demo netowk and try to join using that network.
 	return nil
 }
 
 func (em *EnablerPlatformManager) LeaveNetwork(networkId string, orgName string, useVolume bool, finalize bool) error {
 	if em.Enablers != nil {
 		for _, network := range em.Enablers {
-
 			return network.InterfaceProvider.Leave(networkId, orgName, em.UserId, useVolume, finalize)
-
 		}
 	}
-
-	// currently will just create a demo netowk and try to join using that network.
 	return nil
 }
 

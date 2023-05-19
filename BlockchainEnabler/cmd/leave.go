@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 Kinshuk Kislay  <kinshuk.kislay@stud.tu-darmstadt.de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ var leaveCmd = &cobra.Command{
 	Use:   "leave",
 	Short: "This command is for leaving the network ",
 	Long: `This command is used to leave the network. 
-	The user needs to provide the user_name and then the `,
+	The user needs to provide the user_name and then the other details to leave the existing network. `,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("leave called")
 		leavePlatformEnabler = enablerplatform.GetInstance(&logger)

@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 Kinshuk Kislay  <kinshuk.kislay@stud.tu-darmstadt.de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,22 +27,20 @@ var deletePlatformManager *enablerplatform.EnablerPlatformManager
 // deleteCmd represents the delete command
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Delete command removes the resources used by the network and deletes the network and the organization.",
+	Long: `Delete command performs the following steps:
+	1. Stops the running containers.
+	2. Removes the resources acquired during this phase.
+	3. Clear the folders which were used by the organization.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("delete called")
+		fmt.Println("Running delete command")
 
 		deletePlatformManager = enablerplatform.GetInstance(&logger)
 		// steps to follow the user specifies the name of the platform and then we run its containers.
 		// it needs to load in the basic file from the directory and initialize it with the values for the network.
 		// We need to then check which kind of network it is and then we would call the network functions(objects).
 		deletePlatformManager.LoadUser(networkId, userId)
-		deletePlatformManager.DeleteNetwork()
+		deletePlatformManager.DeleteNetwork(userLogging)
 	},
 }
 
